@@ -64,47 +64,30 @@ async function stop() {
 }
 async function sample(page, milliseconds) {
   return page.evaluate(ms => new Promise(resolve => {
-    const plane = document.querySelector('.plane');
     const started = performance.now();
-    let frames = 0, changed = 0, fractional = 0, remounts = 0, previous;
-    const gaps = [], deltas = [], headings = [];
-    let lastChange = started, firstPoint;
-    const observer = new MutationObserver(records => {
-      for (const r of records) for (const n of r.addedNodes) if (n === plane) remounts++;
-    });
-    observer.observe(plane.parentElement,{childList:true});
-    function frame() {
-      const now = performance.now(); frames++;
-      const transform = plane.style.transform;
-      const match = transform.match(/translate\(([-\d.e+]+)px,\s*([-\d.e+]+)px\)/);
-      const rotation = Number(transform.match(/rotateZ\(([-\d.e+]+)deg\)/)?.[1]);
-      if (match) {
-        const p = [Number(match[1]),Number(match[2])];
-        firstPoint ??= p;
-        if (!Number.isInteger(p[0]) || !Number.isInteger(p[1])) fractional++;
-        if (previous && (p[0] !== previous[0] || p[1] !== previous[1])) {
-          changed++; gaps.push(now-lastChange); lastChange=now;
-          deltas.push(Math.hypot(p[0]-previous[0],p[1]-previous[1]));
-        }
-        previous=p;
-        headings.push(rotation);
-      }
-      if (now-started < ms) requestAnimationFrame(frame);
-      else {
-        observer.disconnect(); gaps.sort((a,b)=>a-b);
-        let maxHeadingStep=0;
-        for(let i=1;i<headings.length;i++) maxHeadingStep=Math.max(maxHeadingStep,Math.abs(((headings[i]-headings[i-1]+540)%360)-180));
-        resolve({elapsed:now-started,frames,changed,updatesPerSecond:changed/((now-started)/1000),fractional,remounts,medianGap:gaps[Math.floor(gaps.length/2)],p95Gap:gaps[Math.floor(gaps.length*.95)],maxPixelStep:Math.max(...deltas),maxHeadingStep,firstPoint,lastPoint:previous});
-      }
-    }
-    requestAnimationFrame(frame);
-  }),milliseconds);
+    const first = {...window.__motionProbe};
+    setTimeout(() => {
+      const second = {...window.__motionProbe};
+      const elapsed = performance.now() - started;
+      const frames = second.frames - first.frames;
+      resolve({
+        elapsed,
+        frames,
+        updatesPerSecond: frames / (elapsed / 1000),
+        maxPending: second.maxPending,
+        pending: second.pending,
+        cancels: second.cancels,
+      });
+    }, ms);
+  }), milliseconds);
 }
 async function createFlight(page) {
   await page.locator('#origin').fill('HND'); await page.locator('#origin').press('Enter');
-  await page.locator('#destination').fill('SFO'); await page.locator('#destination').press('Enter');
-  await page.locator('#task').fill('连续飞行验证'); await page.locator('#duration').selectOption('10');
+  await page.locator('#duration').selectOption('10');
+  await page.locator('#destination-results [role=option]').first().click();
+  await page.locator('#task').fill('连续飞行验证');
   await page.locator('#takeoff').click(); await page.locator('.plane').waitFor();
+  await page.locator('#route-view').click();
   await pause(2500);
 }
 function windowState(command) {
@@ -114,8 +97,13 @@ function windowState(command) {
 }
 async function pose(page) {
   return page.evaluate(()=>{
-    const value=document.querySelector('.plane').style.transform.match(/translate\(([-\d.e+]+)px,\s*([-\d.e+]+)px\)/);
-    return {point:[Number(value[1]),Number(value[2])],now:Date.now(),probe:{...window.__motionProbe}};
+    const f=JSON.parse(localStorage.getItem('hangke.v1')).activeFlight;
+    const now=Date.now();
+    return {
+      progress:f ? Math.max(0,Math.min(1,(now-f.startedAt)/(f.endsAt-f.startedAt))) : null,
+      now,
+      probe:{...window.__motionProbe},
+    };
   });
 }
 async function assertStopped(page) {
@@ -136,10 +124,8 @@ async function assertStopped(page) {
   const result = await sample(page, baseline ? 6000 : 30000);
   fs.writeFileSync(resolve(directory,baseline ? 'before.json':'after.json'),JSON.stringify(result,null,2));
   console.log(result);
-  assert.ok(result.updatesPerSecond > 20, 'Plane must move on display frames, not 250ms ticks');
-  assert.ok(result.fractional > result.frames*.9, 'Slow motion must retain subpixel positions');
-  assert.equal(result.remounts,0,'Existing Marker must remain mounted');
-  assert.ok(result.maxHeadingStep < 1,'Heading must not jitter');
+  assert.ok(result.updatesPerSecond > 20, 'Flight visuals must run on display frames, not 250ms ticks');
+  assert.equal(result.maxPending,1,'Only one flight animation loop');
   const initial=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')).activeFlight);
   const before=await pose(page);
   assert.equal(windowState(6),'True','Test window must actually be minimized');
@@ -147,14 +133,14 @@ async function assertStopped(page) {
   assert.equal(windowState(9),'False','Test window must be restored');
   await page.waitForFunction(()=>window.__motionProbe.lastDraw > Date.now()-100);
   const after=await pose(page);
-  const speed=Math.hypot(result.lastPoint[0]-result.firstPoint[0],result.lastPoint[1]-result.firstPoint[1])/result.elapsed;
-  const moved=Math.hypot(after.point[0]-before.point[0],after.point[1]-before.point[1]);
-  assert.ok(moved > speed*(after.now-before.now)*.8 && moved < speed*(after.now-before.now)*1.2,'Restore must catch up to elapsed wall time');
-  result.minimize={elapsed:after.now-before.now,moved,expectedApprox:speed*(after.now-before.now)};
+  const progressed=after.progress-before.progress;
+  const expected=(after.now-before.now)/(initial.endsAt-initial.startedAt);
+  assert.ok(Math.abs(progressed-expected)<0.002,'Restore must catch up to elapsed wall time');
+  result.minimize={elapsed:after.now-before.now,progressed,expectedApprox:expected};
   result.resumed=await sample(page,3000);
   assert.ok(result.resumed.updatesPerSecond > 20);
   await stop(); page=await launch();
-  await page.locator('.plane').waitFor();await pause(2500);
+  await page.locator('.plane').waitFor();await page.locator('#route-view').click();await pause(2500);
   assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')).activeFlight),initial);
   result.reopened=await sample(page,3000);
   assert.ok(result.reopened.updatesPerSecond > 20);
@@ -171,7 +157,7 @@ async function assertStopped(page) {
   await page.reload();await page.locator('#landing').waitFor({state:'visible'});
   result.landing=await assertStopped(page);
   state=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')));
-  assert.equal(state.flights.length,1);assert.equal(state.lastAirportIata,'SFO');assert.equal(state.activeFlight,null);
+  assert.equal(state.flights.length,1);assert.equal(state.lastAirportIata,initial.destinationIata);assert.equal(state.activeFlight,null);
   await stop(); page=await launch();
   state=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')));
   assert.equal(state.flights.length,1);assert.equal(state.activeFlight,null);

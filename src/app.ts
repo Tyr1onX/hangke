@@ -3,10 +3,12 @@ import {
   airport,
   coordinates,
   search,
+  reachable,
   type Airport,
+  type ReachableAirport,
 } from "./airports.ts";
 import { distance } from "./geo.ts";
-import { FlightMap } from "./map.ts";
+import { FlightMap, type FlightView } from "./map.ts";
 import {
   KEY,
   decode,
@@ -23,9 +25,9 @@ export function start() {
   root.innerHTML = `<header><span class="brand">航刻</span><button id="history-toggle">航迹</button></header>
     <div id="notice" role="alert" hidden></div><div id="map-error" role="alert" hidden>地图加载失败 <button id="retry">重试</button></div>
     <form id="planner" autocomplete="off"><div class="airport-field"><label for="origin">出发机场</label><input id="origin" placeholder="机场 / 城市" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-results"><div id="origin-results" class="results" role="listbox" hidden></div></div>
-    <span class="arrow" aria-hidden="true">→</span><div class="airport-field"><label for="destination">目的机场</label><input id="destination" placeholder="机场 / 城市" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="destination-results"><div id="destination-results" class="results" role="listbox" hidden></div></div>
-    <label class="duration">专注时长<select id="duration" aria-label="专注时长"></select></label><label class="task-field">当前任务<input id="task" placeholder="准备专注什么？" maxlength="200"></label><button id="takeoff" class="primary" disabled>起飞</button><output id="distance"></output></form>
-    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="focus"><div id="timer" role="timer"></div><p id="flight-task"></p><button id="cancel" class="quiet">结束航程</button></div></section>
+    <label class="duration">专注时长<select id="duration" aria-label="专注时长"></select></label><span class="arrow" aria-hidden="true">→</span><div class="airport-field"><label for="destination">可达目的地</label><input id="destination" placeholder="先选择出发机场和时长" readonly role="combobox" aria-expanded="false" aria-controls="destination-results"><div id="destination-results" class="results" role="listbox" hidden></div></div>
+    <label class="task-field">当前任务<input id="task" placeholder="准备专注什么？" maxlength="200"></label><button id="takeoff" class="primary" disabled>起飞</button><output id="distance"></output></form>
+    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="quiet" type="button">跟随飞机</button><button id="route-view" class="quiet" type="button">查看航线</button></div><div class="focus"><div id="timer" role="timer"></div><p id="flight-task"></p><button id="cancel" class="quiet">结束航程</button></div></section>
     <section id="landing" class="result" hidden aria-label="航程完成"><p id="landing-route"></p><h1>航程完成</h1><p id="landing-metrics"></p><p id="landing-task"></p><button id="done" class="primary">完成</button></section>
     <aside id="history" hidden aria-label="航迹"><h1>航迹</h1><div id="history-list"></div><div id="details" hidden></div></aside>
     <dialog id="confirm"><p>结束本次航程？本次航程不会保存。</p><div class="dialog-actions"><button id="continue" autofocus>继续飞行</button><button id="end">结束航程</button></div></dialog>`;
@@ -59,13 +61,27 @@ export function start() {
       return false;
     }
   };
+  const syncFlightViewButtons = (view: FlightView) => {
+    const follow = el<HTMLButtonElement>("follow-plane"),
+      route = el<HTMLButtonElement>("route-view");
+    follow.textContent = view === "manual" ? "回到飞机" : "跟随飞机";
+    follow.disabled = view === "focus";
+    route.disabled = view === "route";
+    follow.setAttribute("aria-pressed", String(view === "focus"));
+    route.setAttribute("aria-pressed", String(view === "route"));
+  };
   let map: FlightMap | undefined;
   try {
-    map = new FlightMap((failed) => show("map-error", failed));
+    map = new FlightMap(
+      (failed) => show("map-error", failed),
+      syncFlightViewButtons,
+    );
   } catch {
     show("map-error", true);
   }
   el("retry").onclick = () => window.location.reload();
+  el("follow-plane").onclick = () => map?.focusPlane();
+  el("route-view").onclick = () => map?.showRoute();
   let origin = airport(state.lastAirportIata),
     destination: Airport | undefined;
   let historyMode = false,
@@ -77,6 +93,9 @@ export function start() {
     Number(duration.value) >= 10 &&
     Number(duration.value) <= 180 &&
     Number(duration.value) % 5 === 0;
+  const setInput = (id: string, a?: Airport) => {
+    el<HTMLInputElement>(id).value = a ? `${a.iata} · ${a.city || a.name}` : "";
+  };
   const refreshPlanner = () => {
     el<HTMLButtonElement>("takeoff").disabled = !(
       storageAvailable &&
@@ -92,88 +111,165 @@ export function start() {
         ? `${Math.round(distance(coordinates(origin), coordinates(destination))).toLocaleString()} km`
         : "";
   };
-  const setInput = (id: string, a?: Airport) => {
-    el<HTMLInputElement>(id).value = a ? `${a.iata} · ${a.city || a.name}` : "";
+
+  const originInput = el<HTMLInputElement>("origin"),
+    originResults = el("origin-results");
+  let originMatches: Airport[] = [],
+    originIndex = -1;
+  const closeOrigin = () => {
+    originResults.hidden = true;
+    originInput.setAttribute("aria-expanded", "false");
+    originInput.removeAttribute("aria-activedescendant");
+    originIndex = -1;
   };
-  for (const id of ["origin", "destination"]) {
-    const input = el<HTMLInputElement>(id),
-      results = el(`${id}-results`);
-    let matches: Airport[] = [],
-      index = -1;
-    const close = () => {
-      results.hidden = true;
-      input.setAttribute("aria-expanded", "false");
-      input.removeAttribute("aria-activedescendant");
-      index = -1;
-    };
-    const choose = (a: Airport) => {
-      if (id === "origin") origin = a;
-      else destination = a;
-      setInput(id, a);
-      close();
-      refreshPlanner();
-      map?.select(origin, destination);
-      input.focus();
-    };
-    input.oninput = () => {
-      if (id === "origin") origin = undefined;
-      else destination = undefined;
-      map?.select(origin, destination);
-      refreshPlanner();
-      index = -1;
-      input.removeAttribute("aria-activedescendant");
-      matches = search(input.value);
-      results.replaceChildren();
-      matches.forEach((a, i) => {
-        const item = document.createElement("div");
-        item.id = `${id}-option-${i}`;
-        item.setAttribute("role", "option");
-        item.setAttribute("aria-selected", "false");
-        const code = document.createElement("strong");
-        code.textContent = `${a.iata} · ${a.city || a.country}`;
-        const name = document.createElement("small");
-        name.textContent = a.name;
-        item.append(code, name);
-        item.onmousedown = (e) => e.preventDefault();
-        item.onclick = () => choose(a);
-        results.append(item);
-      });
-      if (!matches.length && input.value.trim()) {
-        const item = document.createElement("p");
-        item.textContent = "未找到机场";
-        results.append(item);
-      }
-      results.hidden = !input.value.trim();
-      input.setAttribute("aria-expanded", String(!results.hidden));
-    };
-    input.onkeydown = (e) => {
-      if (e.key === "Escape") close();
-      if (
-        ["ArrowDown", "ArrowUp"].includes(e.key) &&
-        matches.length &&
-        !results.hidden
-      ) {
-        e.preventDefault();
-        index =
-          (index +
-            (e.key === "ArrowDown" ? 1 : matches.length - 1) +
-            matches.length) %
-          matches.length;
-        Array.from(results.children).forEach((item, i) =>
-          item.setAttribute("aria-selected", String(i === index)),
-        );
-        input.setAttribute("aria-activedescendant", `${id}-option-${index}`);
-      }
-      if (e.key === "Enter" && !results.hidden) {
-        e.preventDefault();
-        if (matches[index < 0 ? 0 : index])
-          choose(matches[index < 0 ? 0 : index]);
-      }
-    };
-    input.onblur = close;
-  }
+
+  const destinationInput = el<HTMLInputElement>("destination"),
+    destinationResults = el("destination-results");
+  let destinationMatches: ReachableAirport[] = [];
+  const closeDestinations = () => {
+    destinationResults.hidden = true;
+    destinationInput.setAttribute("aria-expanded", "false");
+  };
+  const openDestinations = () => {
+    if (!destinationMatches.length) return;
+    destinationResults.hidden = false;
+    destinationInput.setAttribute("aria-expanded", "true");
+  };
+  const refreshDestinations = (open = true) => {
+    destinationMatches =
+      origin && validDuration() ? reachable(origin, Number(duration.value)) : [];
+    if (
+      destination &&
+      !destinationMatches.some(({ airport: a }) => a.iata === destination!.iata)
+    ) {
+      destination = undefined;
+      setInput("destination");
+      map?.select(origin);
+    }
+    destinationResults.replaceChildren();
+    destinationMatches.forEach(({ airport: a, distanceKm }, i) => {
+      const item = document.createElement("div");
+      item.id = `destination-option-${i}`;
+      item.setAttribute("role", "option");
+      item.setAttribute(
+        "aria-selected",
+        String(destination?.iata === a.iata),
+      );
+      const code = document.createElement("strong");
+      code.textContent = `${a.iata} · ${a.city || a.country}`;
+      const details = document.createElement("small");
+      details.textContent = `${Math.round(distanceKm).toLocaleString()} km`;
+      item.append(code, details);
+      item.onmousedown = (e) => e.preventDefault();
+      item.onclick = () => {
+        destination = a;
+        setInput("destination", a);
+        closeDestinations();
+        refreshPlanner();
+        map?.select(origin, destination);
+      };
+      destinationResults.append(item);
+    });
+    if (origin && validDuration() && !destinationMatches.length) {
+      const item = document.createElement("p");
+      item.textContent = "当前时长暂无可达目的地";
+      destinationResults.append(item);
+    }
+    destinationInput.disabled = !destinationMatches.length;
+    destinationInput.placeholder = origin
+      ? "选择可达目的地"
+      : "先选择出发机场和时长";
+    destinationResults.hidden =
+      !open || !origin || !validDuration() || !destinationMatches.length;
+    destinationInput.setAttribute(
+      "aria-expanded",
+      String(!destinationResults.hidden),
+    );
+    refreshPlanner();
+  };
+
+  const chooseOrigin = (a: Airport) => {
+    origin = a;
+    destination = undefined;
+    setInput("origin", a);
+    setInput("destination");
+    closeOrigin();
+    map?.select(origin);
+    refreshDestinations(true);
+    originInput.focus();
+  };
+  originInput.oninput = () => {
+    origin = undefined;
+    destination = undefined;
+    setInput("destination");
+    map?.select();
+    refreshDestinations(false);
+    originIndex = -1;
+    originInput.removeAttribute("aria-activedescendant");
+    originMatches = search(originInput.value);
+    originResults.replaceChildren();
+    originMatches.forEach((a, i) => {
+      const item = document.createElement("div");
+      item.id = `origin-option-${i}`;
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", "false");
+      const code = document.createElement("strong");
+      code.textContent = `${a.iata} · ${a.city || a.country}`;
+      const name = document.createElement("small");
+      name.textContent = a.name;
+      item.append(code, name);
+      item.onmousedown = (e) => e.preventDefault();
+      item.onclick = () => chooseOrigin(a);
+      originResults.append(item);
+    });
+    if (!originMatches.length && originInput.value.trim()) {
+      const item = document.createElement("p");
+      item.textContent = "未找到机场";
+      originResults.append(item);
+    }
+    originResults.hidden = !originInput.value.trim();
+    originInput.setAttribute("aria-expanded", String(!originResults.hidden));
+  };
+  originInput.onkeydown = (e) => {
+    if (e.key === "Escape") closeOrigin();
+    if (
+      ["ArrowDown", "ArrowUp"].includes(e.key) &&
+      originMatches.length &&
+      !originResults.hidden
+    ) {
+      e.preventDefault();
+      originIndex =
+        (originIndex +
+          (e.key === "ArrowDown" ? 1 : originMatches.length - 1) +
+          originMatches.length) %
+        originMatches.length;
+      Array.from(originResults.children).forEach((item, i) =>
+        item.setAttribute("aria-selected", String(i === originIndex)),
+      );
+      originInput.setAttribute(
+        "aria-activedescendant",
+        `origin-option-${originIndex}`,
+      );
+    }
+    if (e.key === "Enter" && !originResults.hidden) {
+      e.preventDefault();
+      const selected = originMatches[originIndex < 0 ? 0 : originIndex];
+      if (selected) chooseOrigin(selected);
+    }
+  };
+  originInput.onblur = closeOrigin;
+  destinationInput.onfocus = openDestinations;
+  destinationInput.onclick = openDestinations;
+  destinationInput.onkeydown = (e) => {
+    if (e.key === "Escape") closeDestinations();
+  };
   el("task").oninput = refreshPlanner;
-  duration.onchange = refreshPlanner;
+  duration.onchange = () => {
+    destination = undefined;
+    setInput("destination");
+    map?.select(origin);
+    refreshDestinations(true);
+  };
   let animationFrame: number | null = null;
   const stopPlaneAnimation = () => {
     if (animationFrame !== null) cancelAnimationFrame(animationFrame);
@@ -211,7 +307,13 @@ export function start() {
       const f = state.activeFlight;
       el("flight-route").textContent = `${f.originIata} → ${f.destinationIata}`;
       el("flight-task").textContent = f.task;
-      map?.select(airport(f.originIata), airport(f.destinationIata));
+      const a = airport(f.originIata),
+        b = airport(f.destinationIata);
+      map?.select(a, b);
+      if (a && b && map) {
+        map.fly(a, b, progress(f, Date.now()));
+        map.focusPlane();
+      }
       startPlaneAnimation();
     } else {
       stopPlaneAnimation();
@@ -293,9 +395,10 @@ export function start() {
   el("done").onclick = () => {
     landed = undefined;
     el<HTMLInputElement>("task").value = "";
+    refreshDestinations(true);
     render();
     map?.select(origin);
-    el("destination").focus();
+    destinationInput.focus();
   };
   el("history-toggle").onclick = () => {
     historyMode = !historyMode;
@@ -338,6 +441,7 @@ export function start() {
   };
   if (!airports.length) notice("机场数据无法加载，暂时无法起飞。");
   setInput("origin", origin);
+  refreshDestinations(!!origin);
   render();
   tick();
   setInterval(tick, 250);

@@ -37,14 +37,31 @@ const fs = require("node:fs");
   await page.locator("#origin").fill("CGQ");
   await page.locator("#origin").press("Enter");
   assert.match(await page.locator("#origin").inputValue(), /CGQ/);
-  await page.locator("#destination").fill("Tokyo");
+  const candidateDistances = async () =>
+    (await page.locator("#destination-results [role=option]").allInnerTexts()).map(
+      (text) => Number(text.match(/([\d,]+) km/)?.[1].replaceAll(",", "")),
+    );
+  await page.locator("#duration").selectOption("25");
+  let distances = await candidateDistances();
+  assert.ok(Math.abs(distances[0] - 312.5) < 100, JSON.stringify(distances));
+  const first25 = distances[0];
+  await page.locator("#duration").selectOption("60");
+  distances = await candidateDistances();
+  assert.ok(Math.abs(distances[0] - 750) < 100, JSON.stringify(distances));
   assert.ok(
-    (await page.locator("#destination-results [role=option]").count()) > 0,
+    !(await page.locator("#destination-results").innerText()).includes("HND"),
+    "CGQ + 60 min must not offer HND",
   );
-  await page.locator("#destination").fill("HND");
-  await page.locator("#destination").press("Enter");
-  await page.locator("#task").fill("验收航程");
+  const first60 = distances[0];
+  await page.locator("#duration").selectOption("120");
+  distances = await candidateDistances();
+  assert.ok(Math.abs(distances[0] - 1500) < 100, JSON.stringify(distances));
+  const first120 = distances[0];
+  assert.ok(first25 < first60 && first60 < first120);
   await page.locator("#duration").selectOption("10");
+  await page.locator("#destination-results [role=option]").first().click();
+  const selectedIata = (await page.locator("#destination").inputValue()).slice(0, 3);
+  await page.locator("#task").fill("验收航程");
   assert.equal(await page.locator("#takeoff").isDisabled(), false);
   assert.match(await page.locator("#distance").innerText(), /km/);
   await page.waitForFunction(
@@ -59,7 +76,7 @@ const fs = require("node:fs");
   const active = await page.evaluate(
     () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight,
   );
-  assert.equal(active.destinationIata, "HND");
+  assert.equal(active.destinationIata, selectedIata);
   await page.reload();
   await page.locator("#flight").waitFor({ state: "visible" });
   assert.equal(
@@ -96,12 +113,12 @@ const fs = require("node:fs");
     JSON.parse(localStorage.getItem("hangke.v1")),
   );
   assert.equal(state.flights.length, 1);
-  assert.equal(state.lastAirportIata, "HND");
+  assert.equal(state.lastAirportIata, selectedIata);
   assert.equal(state.activeFlight, null);
   await page.locator("#done").click();
-  assert.match(await page.locator("#origin").inputValue(), /^HND/);
+  assert.match(await page.locator("#origin").inputValue(), new RegExp(`^${selectedIata}`));
   await page.reload();
-  assert.match(await page.locator("#origin").inputValue(), /^HND/);
+  assert.match(await page.locator("#origin").inputValue(), new RegExp(`^${selectedIata}`));
   await page.locator("#history-toggle").click();
   await page.locator(".history-item").click();
   assert.match(await page.locator("#details").innerText(), /验收航程/);
@@ -110,8 +127,8 @@ const fs = require("node:fs");
     path: `artifacts/${desktop ? "windows" : "browser"}-history.png`,
   });
   await page.locator("#history-toggle").click();
-  await page.locator("#destination").fill("SFO");
-  await page.locator("#destination").press("Enter");
+  await page.locator("#duration").selectOption("10");
+  await page.locator("#destination-results [role=option]").first().click();
   await page.locator("#task").fill("取消测试");
   await page.locator("#takeoff").click();
   await page.locator("#cancel").click();
@@ -123,7 +140,7 @@ const fs = require("node:fs");
     JSON.parse(localStorage.getItem("hangke.v1")),
   );
   assert.equal(state.flights.length, 1);
-  assert.equal(state.lastAirportIata, "HND");
+  assert.equal(state.lastAirportIata, selectedIata);
   assert.equal(state.activeFlight, null);
   if (!desktop) await page.setViewportSize({ width: 900, height: 600 });
   await page.waitForTimeout(2000);
@@ -141,7 +158,7 @@ const fs = require("node:fs");
       {
         desktop,
         checks:
-          "planner/search/timer/reload/expired landing/idempotence/history/cancel/resize",
+          "planner/duration-candidates/route/timer/reload/expired landing/idempotence/history/cancel/resize",
         tileResponses: tiles.length,
         workers: [...new Set(workers)],
         errors,

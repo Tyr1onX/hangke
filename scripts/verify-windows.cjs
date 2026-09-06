@@ -47,10 +47,9 @@ async function stop() {
   await page.screenshot({ path: "artifacts/windows-globe.png" });
   await page.locator("#origin").fill("HND");
   await page.locator("#origin").press("Enter");
-  await page.locator("#destination").fill("SFO");
-  await page.locator("#destination").press("Enter");
-  await page.locator("#task").fill("跨太平洋专注验收");
   await page.locator("#duration").selectOption("10");
+  await page.locator("#destination-results [role=option]").first().click();
+  await page.locator("#task").fill("跨太平洋专注验收");
   await page.locator("#takeoff").click();
   const initial = await page.evaluate(
     () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight,
@@ -79,7 +78,7 @@ async function stop() {
     JSON.parse(localStorage.getItem("hangke.v1")),
   );
   assert.equal(state.flights.length, 1);
-  assert.equal(state.lastAirportIata, "SFO");
+  assert.equal(state.lastAirportIata, initial.destinationIata);
   await stop();
   ({ page } = await launch());
   state = await page.evaluate(() =>
@@ -87,7 +86,7 @@ async function stop() {
   );
   assert.equal(state.flights.length, 1);
   assert.equal(state.activeFlight, null);
-  assert.match(await page.locator("#origin").inputValue(), /^SFO/);
+  assert.match(await page.locator("#origin").inputValue(), new RegExp(`^${initial.destinationIata}`));
   await page.locator("#history-toggle").click();
   await page.locator(".history-item").click();
   await page.waitForTimeout(3000);

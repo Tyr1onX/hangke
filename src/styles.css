@@ -104,6 +104,9 @@ header button {
   flex: 1.1;
   min-width: 145px;
 }
+#destination[readonly] {
+  cursor: pointer;
+}
 .arrow {
   color: #93a4ad;
 }
@@ -175,17 +178,35 @@ header button {
   padding: 12px;
   color: #a2b0b7;
 }
-.airport-pin {
-  color: #dfedef;
-  background: #172126e8;
-  border: 1px solid #a5c8cc88;
-  border-radius: 5px;
-  padding: 5px 8px;
-  font-size: 12px;
-}
 .plane {
   color: #edf8f8;
   filter: drop-shadow(0 2px 3px #000);
+  pointer-events: none;
+}
+.plane-icon {
+  display: block;
+  transform-origin: 50% 50%;
+}
+.plane.plane-overlay {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  transform: translate(-50%, -50%) !important;
+}
+.flight-views {
+  position: absolute;
+  top: 28px;
+  right: 32px;
+  display: flex;
+  gap: 8px;
+}
+.flight-views .quiet {
+  backdrop-filter: blur(10px);
+}
+.flight-views .quiet[aria-pressed="true"] {
+  color: #edf8f8;
+  border-color: #a5c8cc66;
 }
 .route-label {
   position: absolute;
