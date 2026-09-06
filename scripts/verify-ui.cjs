@@ -2,6 +2,82 @@
 const { chromium } = require("playwright");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function state(page) {
+  return page.evaluate(() =>
+    JSON.parse(localStorage.getItem("hangke.v1")) || {
+      activeFlight: null,
+      flights: [],
+      lastAirportIata: null,
+    },
+  );
+}
+async function setDuration(page, minutes) {
+  await page.locator(`#duration-track [data-minutes="${minutes}"]`).evaluate((element) => element.click());
+  await page.waitForFunction(
+    (value) => document.querySelector("#duration")?.getAttribute("aria-valuenow") === String(value),
+    minutes,
+  );
+  await pause(160);
+}
+async function setOrigin(page, iata) {
+  const opener = (await page.locator("#flight-stage").isVisible()) ? "#flight-origin" : "#home-change-origin";
+  await page.locator(opener).click();
+  await page.locator("#origin").fill(iata);
+  await page.locator("#origin").press("Enter");
+  await page.locator("#origin-confirm").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#origin-confirm-code").innerText(), iata);
+  await page.locator("#origin-apply").click();
+  await page.locator("#origin-sheet").waitFor({ state: "hidden" });
+}
+async function beginPlanning(page) {
+  await page.locator("#start-preflight").click();
+  await page.locator("#flight-stage").waitFor({ state: "visible" });
+}
+async function chooseFirstFlight(page) {
+  const first = page.locator("#flight-carousel .flight-card").first();
+  await first.waitFor({ state: "visible" });
+  const iata = await first.getAttribute("data-iata");
+  await first.click();
+  assert.equal(await first.getAttribute("aria-selected"), "true");
+  return iata;
+}
+async function completePreflight(page, { originIata, duration = 30, taskIndex = 1 } = {}) {
+  await page.locator("#home-stage").waitFor({ state: "visible" });
+  if (originIata) await setOrigin(page, originIata);
+  await beginPlanning(page);
+  await setDuration(page, duration);
+  const destinationIata = await chooseFirstFlight(page);
+  assert.equal((await state(page)).activeFlight, null, "flight selection is draft only");
+  await page.locator("#choose-flight").click();
+  await page.locator("#seat-stage").waitFor({ state: "visible" });
+  assert.equal(await page.locator("[data-seat]").count(), 28);
+  assert.equal(await page.locator("#focus-picker").isVisible(), false);
+  await page.locator("[data-seat]").first().click();
+  await page.locator("#focus-picker").waitFor({ state: "visible" });
+  await page.locator("[data-task]").nth(taskIndex).click();
+  await page.locator("#confirm-seat").waitFor({ state: "visible" });
+  await page.locator("#confirm-seat").click();
+  await page.locator("#boarding-stage").waitFor({ state: "visible" });
+  assert.equal((await state(page)).activeFlight, null, "boarding pass is draft only");
+  assert.equal(await page.locator("#boarding-seat").innerText(), "01A");
+  await page.locator("#next-step").click();
+  await page.locator("#checkin-stage").waitFor({ state: "visible" });
+  assert.equal((await state(page)).activeFlight, null, "check-in is draft only");
+  await page.locator("#checkin-action").click();
+  await page.locator("#checkin-stub").waitFor({ state: "visible" });
+  await page.locator("#checkin-stub").press("Enter");
+  await page.locator("#airplane-stage").waitFor({ state: "visible" });
+  assert.equal((await state(page)).activeFlight, null, "airplane mode is draft only");
+  await page.locator("#boarding-action").click();
+  await page.locator("#ready-stage").waitFor({ state: "visible" });
+  assert.equal((await state(page)).activeFlight, null, "ready state must not start the clock");
+  await page.locator("#go-takeoff").click();
+  await page.locator("#flight").waitFor({ state: "visible" });
+  return destinationIata;
+}
+
 (async () => {
   fs.mkdirSync("artifacts", { recursive: true });
   const desktop = !!process.env.HANGKE_CDP;
@@ -12,180 +88,112 @@ const fs = require("node:fs");
     ? browser.contexts()[0]
     : await browser.newContext({ viewport: { width: 1280, height: 800 } });
   const page = desktop ? context.pages()[0] : await context.newPage();
-  const errors = [],
-    tiles = [],
-    workers = [];
-  page.on("pageerror", (e) => {
-    errors.push(e.message);
-    console.error("PAGE ERROR:", e.message);
-  });
+  const errors = [], tiles = [], workers = [];
+  page.on("pageerror", (e) => { errors.push(e.message); console.error("PAGE ERROR:", e.message); });
   page.on("response", (r) => {
-    if (/\/\d+\/\d+\/\d+\.(pbf|mvt)/.test(r.url()) && r.ok())
-      tiles.push(r.url());
+    if (/\/\d+\/\d+\/\d+\.(pbf|mvt)/.test(r.url()) && r.ok()) tiles.push(r.url());
   });
   page.on("worker", (w) => workers.push(w.url()));
-  if (!desktop) await page.goto("http://127.0.0.1:4173");
-  else await page.reload();
-  await page.locator("#origin").waitFor();
-  // Only the disposable test profile is cleared.
+  if (!desktop) await page.goto("http://127.0.0.1:4173"); else await page.reload();
+  await page.locator("#planner").waitFor();
   await page.evaluate(() => localStorage.removeItem("hangke.v1"));
   await page.reload();
-  await page.locator("#origin").waitFor();
-  assert.equal(await page.locator("#origin").inputValue(), "");
-  assert.equal(await page.locator("#destination").inputValue(), "");
-  assert.equal(await page.locator("#takeoff").isDisabled(), true);
-  await page.locator("#origin").fill("CGQ");
-  await page.locator("#origin").press("Enter");
-  assert.match(await page.locator("#origin").inputValue(), /CGQ/);
-  const candidateDistances = async () =>
-    (await page.locator("#destination-results [role=option]").allInnerTexts()).map(
-      (text) => Number(text.match(/([\d,]+) km/)?.[1].replaceAll(",", "")),
-    );
-  await page.locator("#duration").selectOption("25");
+  await page.locator("#home-stage").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#flight-stage").isVisible(), false);
+  assert.equal((await state(page)).activeFlight, null);
+  await setOrigin(page, "CGQ");
+  assert.match(await page.locator("#home-origin-code").innerText(), /CGQ/);
+  await beginPlanning(page);
+
+  const candidateDistances = async () => {
+    const labels = await page.locator("#flight-carousel .flight-card").evaluateAll((cards) => cards.map((card) => card.getAttribute("aria-label") || ""));
+    return labels.map((text) => Number(text.match(/([\d,]+) km/)?.[1].replaceAll(",", "")));
+  };
+  await setDuration(page, 30);
   let distances = await candidateDistances();
-  assert.ok(Math.abs(distances[0] - 312.5) < 100, JSON.stringify(distances));
-  const first25 = distances[0];
-  await page.locator("#duration").selectOption("60");
+  assert.ok(Math.abs(distances[0] - 375) < 110, JSON.stringify(distances));
+  const first30 = distances[0];
+  await setDuration(page, 60);
   distances = await candidateDistances();
   assert.ok(Math.abs(distances[0] - 750) < 100, JSON.stringify(distances));
-  assert.ok(
-    !(await page.locator("#destination-results").innerText()).includes("HND"),
-    "CGQ + 60 min must not offer HND",
-  );
+  assert.ok(!(await page.locator("#flight-carousel").innerText()).includes("HND"), "CGQ + 60 min must not offer HND");
   const first60 = distances[0];
-  await page.locator("#duration").selectOption("120");
+  await setDuration(page, 120);
   distances = await candidateDistances();
   assert.ok(Math.abs(distances[0] - 1500) < 100, JSON.stringify(distances));
   const first120 = distances[0];
-  assert.ok(first25 < first60 && first60 < first120);
-  await page.locator("#duration").selectOption("10");
-  await page.locator("#destination-results [role=option]").first().click();
-  const selectedIata = (await page.locator("#destination").inputValue()).slice(0, 3);
-  await page.locator("#task").fill("验收航程");
-  assert.equal(await page.locator("#takeoff").isDisabled(), false);
-  assert.match(await page.locator("#distance").innerText(), /km/);
-  await page.waitForFunction(
-    () => document.querySelectorAll(".maplibregl-ctrl-attrib a").length >= 2,
-  );
-  await page.waitForTimeout(7000);
-  await page.screenshot({
-    path: `artifacts/${desktop ? "windows" : "browser"}-planner.png`,
-  });
-  await page.locator("#takeoff").click();
-  await page.locator("#flight").waitFor({ state: "visible" });
-  const active = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight,
-  );
+  assert.ok(first30 < first60 && first60 < first120);
+
+  // Return home, then run the complete progressive flow with a legal 30 minute flight.
+  await page.locator("#flight-back").click();
+  const selectedIata = await completePreflight(page, { duration: 30, taskIndex: 1 });
+  const active = (await state(page)).activeFlight;
   assert.equal(active.destinationIata, selectedIata);
+  assert.equal(active.durationSeconds, 1800);
+  assert.equal(active.task, "\u4ee3\u7801");
+  await page.waitForFunction(() => document.querySelectorAll(".maplibregl-ctrl-attrib a").length >= 2);
+  await pause(2000);
+  await page.screenshot({ path: `artifacts/${desktop ? "windows" : "browser"}-flight.png` });
+
   await page.reload();
   await page.locator("#flight").waitFor({ state: "visible" });
-  assert.equal(
-    await page.evaluate(
-      () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight.id,
-    ),
-    active.id,
-  );
-  // Advance the wall clock fixture, retaining the legal ten-minute duration.
+  assert.equal((await state(page)).activeFlight.id, active.id);
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("hangke.v1"));
-    s.activeFlight.startedAt = Date.now() - 300000;
-    s.activeFlight.endsAt = s.activeFlight.startedAt + 600000;
+    s.activeFlight.startedAt = Date.now() - 900000;
+    s.activeFlight.endsAt = s.activeFlight.startedAt + 1800000;
     localStorage.setItem("hangke.v1", JSON.stringify(s));
   });
   await page.reload();
-  await page
-    .locator("#timer")
-    .filter({ hasText: /0[45]:/ })
-    .waitFor();
-  await page.waitForTimeout(4000);
-  await page.screenshot({
-    path: `artifacts/${desktop ? "windows" : "browser"}-flight.png`,
-  });
+  await page.locator("#timer").filter({ hasText: /1[45]:/ }).waitFor();
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("hangke.v1"));
-    s.activeFlight.startedAt = Date.now() - 600100;
-    s.activeFlight.endsAt = s.activeFlight.startedAt + 600000;
+    s.activeFlight.startedAt = Date.now() - 1800100;
+    s.activeFlight.endsAt = s.activeFlight.startedAt + 1800000;
     localStorage.setItem("hangke.v1", JSON.stringify(s));
   });
   await page.reload();
   await page.locator("#landing").waitFor({ state: "visible" });
-  let state = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("hangke.v1")),
-  );
-  assert.equal(state.flights.length, 1);
-  assert.equal(state.lastAirportIata, selectedIata);
-  assert.equal(state.activeFlight, null);
+  let saved = await state(page);
+  assert.equal(saved.flights.length, 1);
+  assert.equal(saved.lastAirportIata, selectedIata);
+  assert.equal(saved.activeFlight, null);
   await page.locator("#done").click();
-  assert.match(await page.locator("#origin").inputValue(), new RegExp(`^${selectedIata}`));
+  await page.locator("#home-stage").waitFor({ state: "visible" });
+  assert.equal(await page.locator("#home-origin-code").innerText(), selectedIata);
   await page.reload();
-  assert.match(await page.locator("#origin").inputValue(), new RegExp(`^${selectedIata}`));
+  assert.equal(await page.locator("#home-origin-code").innerText(), selectedIata);
+
   await page.locator("#history-toggle").click();
   await page.locator(".history-item").click();
-  assert.match(await page.locator("#details").innerText(), /验收航程/);
-  await page.waitForTimeout(2000);
-  await page.screenshot({
-    path: `artifacts/${desktop ? "windows" : "browser"}-history.png`,
-  });
+  assert.match(await page.locator("#details").innerText(), /\u4ee3\u7801/);
   await page.locator("#history-toggle").click();
-  await page.locator("#duration").selectOption("10");
-  await page.locator("#destination-results [role=option]").first().click();
-  await page.locator("#task").fill("取消测试");
-  await page.locator("#takeoff").click();
+
+  // A second draft can start and cancel without adding history.
+  await completePreflight(page, { duration: 30, taskIndex: 2 });
   const cancelBox = await page.locator("#cancel").boundingBox();
   await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
-  await page.mouse.down();
-  await page.waitForTimeout(350);
-  await page.mouse.up();
+  await page.mouse.down(); await pause(350); await page.mouse.up();
   assert.equal(await page.locator("#flight").isVisible(), true);
-  await page.mouse.down();
-  await page.waitForTimeout(1300);
-  await page.mouse.up();
-  state = await page.evaluate(() =>
-    JSON.parse(localStorage.getItem("hangke.v1")),
-  );
-  assert.equal(state.flights.length, 1);
-  assert.equal(state.lastAirportIata, selectedIata);
-  assert.equal(state.activeFlight, null);
+  await page.mouse.down(); await pause(1300); await page.mouse.up();
+  saved = await state(page);
+  assert.equal(saved.flights.length, 1);
+  assert.equal(saved.lastAirportIata, selectedIata);
+  assert.equal(saved.activeFlight, null);
+  await page.locator("#home-stage").waitFor({ state: "visible" });
+
   if (!desktop) await page.setViewportSize({ width: 900, height: 600 });
-  await page.waitForTimeout(2000);
-  await page.screenshot({
-    path: `artifacts/${desktop ? "windows" : "browser"}-resize.png`,
-  });
+  await pause(1000);
+  await page.screenshot({ path: `artifacts/${desktop ? "windows" : "browser"}-resize.png` });
   assert.equal(errors.length, 0, errors.join("\n"));
   assert.ok(tiles.length > 0, "Production vector tile response required");
-  assert.ok(
-    workers.some((w) => w.includes("maplibre-gl-worker")),
-    "Bundled worker required",
-  );
-  console.log(
-    JSON.stringify(
-      {
-        desktop,
-        checks:
-          "planner/duration-candidates/route/timer/reload/expired landing/idempotence/history/hold-cancel/resize",
-        tileResponses: tiles.length,
-        workers: [...new Set(workers)],
-        errors,
-      },
-      null,
-      2,
-    ),
-  );
-  fs.writeFileSync(
-    `artifacts/${desktop ? "windows" : "browser"}-verification.json`,
-    JSON.stringify(
-      {
-        desktop,
-        tileResponses: tiles.length,
-        workers: [...new Set(workers)],
-        errors,
-      },
-      null,
-      2,
-    ),
-  );
+  assert.ok(workers.some((w) => w.includes("maplibre-gl-worker")), "Bundled worker required");
+  console.log(JSON.stringify({
+    desktop,
+    checks: "home/planning/ruler/carousel/seat-focus/boarding/checkin/airplane/ready/GO/reload/landing/history/cancel/resize",
+    tileResponses: tiles.length,
+    workers: [...new Set(workers)],
+    errors,
+  }, null, 2));
   await browser.close();
-})().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+})().catch((e) => { console.error(e); process.exit(1); });

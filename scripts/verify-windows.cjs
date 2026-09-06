@@ -9,6 +9,37 @@ const profile = path.resolve("artifacts/windows-restart-profile");
 let child;
 let connection;
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+async function setDuration(page, minutes) {
+  await page.locator(`#duration-track [data-minutes="${minutes}"]`).evaluate((element) => element.click());
+  await page.waitForFunction((value) => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value), minutes);
+  await pause(140);
+}
+async function createFlight(page) {
+  await page.locator("#home-stage").waitFor({ state: "visible" });
+  await page.locator("#home-change-origin").click();
+  await page.locator("#origin").fill("HND");
+  await page.locator("#origin").press("Enter");
+  await page.locator("#origin-confirm").waitFor({ state: "visible" });
+  await page.locator("#origin-apply").click();
+  await page.locator("#start-preflight").click();
+  await page.locator("#flight-stage").waitFor({ state: "visible" });
+  await setDuration(page, 30);
+  await page.locator("#flight-carousel .flight-card").first().click();
+  await page.locator("#choose-flight").click();
+  await page.locator("[data-seat]").first().click();
+  await page.locator("#focus-picker").waitFor({ state: "visible" });
+  await page.locator("[data-task]").first().click();
+  await page.locator("#confirm-seat").click();
+  await page.locator("#next-step").click();
+  await page.locator("#checkin-action").click();
+  await page.locator("#checkin-stub").press("Enter");
+  await page.locator("#airplane-stage").waitFor({ state: "visible" });
+  await page.locator("#boarding-action").click();
+  await page.locator("#ready-stage").waitFor({ state: "visible" });
+  assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem("hangke.v1"))?.activeFlight ?? null), null);
+  await page.locator("#go-takeoff").click();
+  await page.locator("#flight").waitFor({ state: "visible" });
+}
 async function launch() {
   child = spawn(exe, [], {
     windowsHide: true,
@@ -45,20 +76,15 @@ async function stop() {
   await page.reload();
   await page.waitForTimeout(5000);
   await page.screenshot({ path: "artifacts/windows-globe.png" });
-  await page.locator("#origin").fill("HND");
-  await page.locator("#origin").press("Enter");
-  await page.locator("#duration").selectOption("10");
-  await page.locator("#destination-results [role=option]").first().click();
-  await page.locator("#task").fill("跨太平洋专注验收");
-  await page.locator("#takeoff").click();
+  await createFlight(page);
   const initial = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight,
+    () => JSON.parse(localStorage.getItem("hangke.v1"))?.activeFlight ?? null,
   );
   await stop();
   ({ page } = await launch());
   await page.locator("#flight").waitFor({ state: "visible" });
   const restored = await page.evaluate(
-    () => JSON.parse(localStorage.getItem("hangke.v1")).activeFlight,
+    () => JSON.parse(localStorage.getItem("hangke.v1"))?.activeFlight ?? null,
   );
   assert.deepEqual(restored, initial);
   await page.waitForTimeout(5000);
@@ -66,8 +92,8 @@ async function stop() {
   // Simulate resuming from sleep with four seconds left, then observe a live timer landing.
   await page.evaluate(() => {
     const s = JSON.parse(localStorage.getItem("hangke.v1"));
-    s.activeFlight.startedAt = Date.now() - 596000;
-    s.activeFlight.endsAt = s.activeFlight.startedAt + 600000;
+    s.activeFlight.startedAt = Date.now() - 1796000;
+    s.activeFlight.endsAt = s.activeFlight.startedAt + 1800000;
     localStorage.setItem("hangke.v1", JSON.stringify(s));
   });
   await page.reload();
@@ -95,7 +121,7 @@ async function stop() {
   const resized = spawnSync("powershell.exe", ["-NoProfile", "-Command", `Add-Type -TypeDefinition 'using System; using System.Runtime.InteropServices; public class HangkeWindowTest { [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr a, int x, int y, int w, int z, uint f); }'; $handle=(Get-Process -Id ${child.pid}).MainWindowHandle; [HangkeWindowTest]::SetWindowPos($handle,[IntPtr]::Zero,0,0,1125,790,6)`], {windowsHide:true,encoding:"utf8"});
   assert.equal(resized.status,0,resized.stderr);
   await page.waitForTimeout(2000);
-  const size = await page.evaluate(() => ({width:innerWidth,height:innerHeight,button:document.querySelector('#takeoff').getBoundingClientRect().right}));
+  const size = await page.evaluate(() => ({width:innerWidth,height:innerHeight,button:document.querySelector('#start-preflight').getBoundingClientRect().right}));
   assert.ok(size.width < 1280 && size.button <= size.width,JSON.stringify(size));
   await page.screenshot({path:"artifacts/windows-native-resize.png"});
   const result = {

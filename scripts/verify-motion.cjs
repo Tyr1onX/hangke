@@ -9,6 +9,11 @@ const directory = resolve('artifacts/motion');
 const executable = resolve(baseline ? 'artifacts/motion/hangke-before.exe' : 'src-tauri/target/release/hangke.exe');
 let child, connection;
 const pause = ms => new Promise(r => setTimeout(r, ms));
+async function setDuration(page, minutes) {
+  await page.locator(`#duration-track [data-minutes="${minutes}"]`).evaluate(element => element.click());
+  await page.waitForFunction(value => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value), minutes);
+  await pause(140);
+}
 function installProbe() {
   if (window.__motionProbe) return;
   const pending = new Set();
@@ -82,11 +87,30 @@ async function sample(page, milliseconds) {
   }), milliseconds);
 }
 async function createFlight(page) {
-  await page.locator('#origin').fill('HND'); await page.locator('#origin').press('Enter');
-  await page.locator('#duration').selectOption('10');
-  await page.locator('#destination-results [role=option]').first().click();
-  await page.locator('#task').fill('连续飞行验证');
-  await page.locator('#takeoff').click(); await page.locator('.plane').waitFor();
+  await page.locator('#home-stage').waitFor({state:'visible'});
+  await page.locator('#home-change-origin').click();
+  await page.locator('#origin').fill('HND'); await page.locator('#origin').press('Enter'); await page.locator('#origin-confirm').waitFor({state:'visible'}); await page.locator('#origin-apply').click();
+  await page.locator('#start-preflight').click();
+  await page.locator('#flight-stage').waitFor({state:'visible'});
+  await setDuration(page, 30);
+  await page.locator('#flight-carousel .flight-card').first().click();
+  await page.locator('#choose-flight').click();
+  await page.locator('#seat-stage').waitFor({state:'visible'});
+  await page.locator('[data-seat]').first().click();
+  await page.locator('#focus-picker').waitFor({state:'visible'});
+  await page.locator('[data-task]').nth(1).click();
+  await page.locator('#confirm-seat').click();
+  await page.locator('#boarding-stage').waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null),null);
+  await page.locator('#next-step').click();
+  await page.locator('#checkin-action').click();
+  await page.locator('#checkin-stub').press('Enter');
+  await page.locator('#airplane-stage').waitFor({state:'visible'});
+  await page.locator('#boarding-action').click();
+  await page.locator('#ready-stage').waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null),null);
+  await page.locator('#go-takeoff').click();
+  await page.locator('.plane').waitFor();
   await page.locator('#route-view').click();
   await pause(2500);
 }
@@ -97,7 +121,7 @@ function windowState(command) {
 }
 async function pose(page) {
   return page.evaluate(()=>{
-    const f=JSON.parse(localStorage.getItem('hangke.v1')).activeFlight;
+    const f=JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null;
     const now=Date.now();
     return {
       progress:f ? Math.max(0,Math.min(1,(now-f.startedAt)/(f.endsAt-f.startedAt))) : null,
@@ -126,7 +150,7 @@ async function assertStopped(page) {
   console.log(result);
   assert.ok(result.updatesPerSecond > 20, 'Flight visuals must run on display frames, not 250ms ticks');
   assert.equal(result.maxPending,1,'Only one flight animation loop');
-  const initial=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')).activeFlight);
+  const initial=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null);
   const before=await pose(page);
   assert.equal(windowState(6),'True','Test window must actually be minimized');
   await pause(10000);
@@ -141,7 +165,7 @@ async function assertStopped(page) {
   assert.ok(result.resumed.updatesPerSecond > 20);
   await stop(); page=await launch();
   await page.locator('.plane').waitFor();await page.locator('#route-view').click();await pause(2500);
-  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')).activeFlight),initial);
+  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null),initial);
   result.reopened=await sample(page,3000);
   assert.ok(result.reopened.updatesPerSecond > 20);
   const cancelBox=await page.locator('#cancel').boundingBox();
@@ -156,7 +180,7 @@ async function assertStopped(page) {
   assert.equal(state.flights.length,0);assert.equal(state.lastAirportIata,null);
   await createFlight(page);
   // Preserve legal duration, accelerate only the disposable fixture to observe real landing.
-  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('hangke.v1'));s.activeFlight.startedAt=Date.now()-596000;s.activeFlight.endsAt=s.activeFlight.startedAt+600000;localStorage.setItem('hangke.v1',JSON.stringify(s));});
+  await page.evaluate(()=>{const s=JSON.parse(localStorage.getItem('hangke.v1'));s.activeFlight.startedAt=Date.now()-1796000;s.activeFlight.endsAt=s.activeFlight.startedAt+1800000;localStorage.setItem('hangke.v1',JSON.stringify(s));});
   await page.reload();await page.locator('#landing').waitFor({state:'visible'});
   result.landing=await assertStopped(page);
   state=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')));
@@ -165,7 +189,7 @@ async function assertStopped(page) {
   state=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')));
   assert.equal(state.flights.length,1);assert.equal(state.activeFlight,null);
   await page.locator('#history-toggle').click();await page.locator('.history-item').click();
-  assert.match(await page.locator('#details').innerText(),/连续飞行验证/);
+  assert.match(await page.locator("#details").innerText(), /\u4ee3\u7801/);
   fs.writeFileSync(resolve(directory,'after.json'),JSON.stringify(result,null,2));
   console.log('Lifecycle PASS',result);
   await stop();

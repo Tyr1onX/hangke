@@ -6,7 +6,13 @@ import {
 } from "maplibre-gl";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { airport, coordinates, type Airport } from "./airports.ts";
+import {
+  airport,
+  coordinates,
+  airportCityLabel,
+  type Airport,
+  type ReachableAirport,
+} from "./airports.ts";
 import { route, interpolate, bearing, type Coordinate } from "./geo.ts";
 import type { CompletedFlight } from "./state.ts";
 setWorkerUrl(workerUrl);
@@ -14,36 +20,48 @@ const style = "https://tiles.openfreemap.org/styles/dark";
 const focusZoom = 11.5;
 const cameraDuration = 650;
 const focusSettleDuration = 90;
-const airportImageId = "hangke-airport-pin";
+const airportCandidateImageId = "hangke-airport-candidate";
+const airportSelectedImageId = "hangke-airport-selected";
+const airportEndpointImageId = "hangke-airport-endpoint";
 const planeImageId = "hangke-plane";
 export type FlightView = "focus" | "route" | "manual";
 
-function airportImage() {
+function airportBadge(
+  fill: string,
+  stroke: string,
+  glyph: string,
+) {
   const scale = 2,
-    width = 42,
+    width = 62,
     height = 26,
-    radius = 5;
+    radius = 6;
   const canvas = document.createElement("canvas");
   canvas.width = width * scale;
   canvas.height = height * scale;
   const ctx = canvas.getContext("2d")!;
   ctx.scale(scale, scale);
   ctx.beginPath();
-  ctx.moveTo(radius, 0.5);
-  ctx.lineTo(width - radius, 0.5);
-  ctx.quadraticCurveTo(width - 0.5, 0.5, width - 0.5, radius);
-  ctx.lineTo(width - 0.5, height - radius);
-  ctx.quadraticCurveTo(width - 0.5, height - 0.5, width - radius, height - 0.5);
-  ctx.lineTo(radius, height - 0.5);
-  ctx.quadraticCurveTo(0.5, height - 0.5, 0.5, height - radius);
-  ctx.lineTo(0.5, radius);
-  ctx.quadraticCurveTo(0.5, 0.5, radius, 0.5);
-  ctx.closePath();
-  ctx.fillStyle = "rgba(23, 33, 38, 0.91)";
+  ctx.roundRect(0.5, 0.5, width - 1, height - 1, radius);
+  ctx.fillStyle = fill;
   ctx.fill();
-  ctx.strokeStyle = "rgba(165, 200, 204, 0.53)";
+  ctx.strokeStyle = stroke;
   ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.save();
+  ctx.translate(12, 13);
+  ctx.rotate(Math.PI / 4);
+  ctx.strokeStyle = glyph;
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(-6, 0);
+  ctx.lineTo(6, 0);
+  ctx.moveTo(1.5, -4.5);
+  ctx.lineTo(1.5, 4.5);
+  ctx.moveTo(-3.5, -2.5);
+  ctx.lineTo(-3.5, 2.5);
+  ctx.stroke();
+  ctx.restore();
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
@@ -67,12 +85,43 @@ function planeImage() {
   return ctx.getImageData(0, 0, canvas.width, canvas.height);
 }
 
+function rangePolygon(center: Coordinate, radiusKm: number): Coordinate[] {
+  const earthRadiusKm = 6371;
+  const angular = radiusKm / earthRadiusKm;
+  const latitude = (center[1] * Math.PI) / 180;
+  const longitude = (center[0] * Math.PI) / 180;
+  const points: Coordinate[] = [];
+  for (let i = 0; i <= 96; i++) {
+    const heading = (i / 96) * Math.PI * 2;
+    const lat = Math.asin(
+      Math.sin(latitude) * Math.cos(angular) +
+        Math.cos(latitude) * Math.sin(angular) * Math.cos(heading),
+    );
+    const lon =
+      longitude +
+      Math.atan2(
+        Math.sin(heading) * Math.sin(angular) * Math.cos(latitude),
+        Math.cos(angular) - Math.sin(latitude) * Math.sin(lat),
+      );
+    let degrees = (lon * 180) / Math.PI;
+    while (degrees - center[0] > 180) degrees -= 360;
+    while (degrees - center[0] < -180) degrees += 360;
+    points.push([degrees, (lat * 180) / Math.PI]);
+  }
+  return points;
+}
+
 export class FlightMap {
   private map: Map;
   private ready = false;
   private history: CompletedFlight[] = [];
   private selected: [Airport, Airport] | null = null;
   private endpoints: Airport[] = [];
+  private planningOrigin: Airport | undefined;
+  private planningCandidates: ReachableAirport[] = [];
+  private planningDestination: Airport | undefined;
+  private planningRangeKm = 0;
+  private airportSelectHandler: ((airport: Airport) => void) | undefined;
   private arrival: Airport | undefined;
   private reserveRight = false;
   private view: FlightView = "manual";
@@ -93,9 +142,32 @@ export class FlightMap {
       style,
       center: [0, 15],
       zoom: 1.2 + Math.log2(window.innerHeight / 800),
-      attributionControl: { compact: false },
+      attributionControl: { compact: true },
       maxTileCacheSize: 512,
       maxTileCacheZoomLevels: 12,
+    });
+    const prepareAttribution = () => {
+      const attribution = this.map
+        .getContainer()
+        .querySelector<HTMLElement>(".maplibregl-ctrl-attrib");
+      const button = attribution?.querySelector<HTMLButtonElement>(
+        ".maplibregl-ctrl-attrib-button",
+      );
+      if (!attribution || !button) return false;
+      if (!attribution.classList.contains("hangke-attrib-ready")) {
+        button.setAttribute("aria-expanded", "false");
+        button.addEventListener("click", () => {
+          const expanded = attribution.classList.toggle(
+            "hangke-attrib-expanded",
+          );
+          button.setAttribute("aria-expanded", String(expanded));
+        });
+        attribution.classList.add("hangke-attrib-ready");
+      }
+      return true;
+    };
+    requestAnimationFrame(() => {
+      if (!prepareAttribution()) this.map.once("load", prepareAttribution);
     });
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
@@ -151,22 +223,52 @@ export class FlightMap {
     });
     this.map.on("style.load", () => {
       this.map.setProjection({ type: "globe" });
-      this.map.addImage(airportImageId, airportImage(), { pixelRatio: 2 });
+      this.map.addImage(
+        airportCandidateImageId,
+        airportBadge("rgba(24, 25, 20, 0.95)", "rgba(240, 201, 75, 0.82)", "#f0c94b"),
+        { pixelRatio: 2 },
+      );
+      this.map.addImage(
+        airportSelectedImageId,
+        airportBadge("#f0c94b", "#f4d76f", "#171814"),
+        { pixelRatio: 2 },
+      );
+      this.map.addImage(
+        airportEndpointImageId,
+        airportBadge("rgba(23, 33, 38, 0.92)", "rgba(165, 200, 204, 0.48)", "#dce7e8"),
+        { pixelRatio: 2 },
+      );
       this.map.addImage(planeImageId, planeImage(), { pixelRatio: 2 });
-      for (const id of ["history", "current", "airports", "plane"]) {
+      for (const id of ["history", "current", "range", "airports", "plane"]) {
         this.map.addSource(id, {
           type: "geojson",
           data: { type: "FeatureCollection", features: [] },
         });
       }
+      this.map.addLayer({
+        id: "range",
+        type: "fill",
+        source: "range",
+        paint: {
+          "fill-color": "#f0c94b",
+          "fill-opacity": 0.055,
+          "fill-outline-color": "rgba(240, 201, 75, 0.12)",
+        },
+      });
       for (const id of ["history", "current"]) {
         this.map.addLayer({
           id,
           type: "line",
           source: id,
           paint: {
-            "line-color": id === "history" ? "#738e98" : "#bfdbdf",
-            "line-width": id === "history" ? 1.2 : 2.3,
+            "line-color":
+              id === "history"
+                ? "#738e98"
+                : ["case", ["boolean", ["get", "planning"], false], "#f0c94b", "#bfdbdf"],
+            "line-width":
+              id === "history"
+                ? 1.2
+                : ["case", ["boolean", ["get", "planning"], false], 1.8, 2.3],
             "line-opacity": id === "history" ? 0.45 : 0.95,
           },
         });
@@ -176,17 +278,86 @@ export class FlightMap {
         type: "symbol",
         source: "airports",
         layout: {
-          "icon-image": airportImageId,
+          "icon-image": [
+            "case",
+            ["==", ["get", "role"], "selected"],
+            airportSelectedImageId,
+            ["==", ["get", "role"], "candidate"],
+            airportCandidateImageId,
+            ["==", ["get", "role"], "origin"],
+            airportCandidateImageId,
+            airportEndpointImageId,
+          ],
           "icon-allow-overlap": true,
           "icon-ignore-placement": true,
           "text-field": ["get", "iata"],
           "text-font": ["Noto Sans Regular"],
-          "text-size": 12,
+          "text-size": 11.5,
+          "text-offset": [0.78, 0],
           "text-allow-overlap": true,
           "text-ignore-placement": true,
         },
-        paint: { "text-color": "#dfedef" },
+        paint: {
+          "text-color": [
+            "case",
+            ["==", ["get", "role"], "selected"],
+            "#171814",
+            ["==", ["get", "role"], "candidate"],
+            "#f0c94b",
+            ["==", ["get", "role"], "origin"],
+            "#f0c94b",
+            "#dfedef",
+          ],
+        },
       });
+      this.map.addLayer({
+        id: "airport-names",
+        type: "symbol",
+        source: "airports",
+        layout: {
+          "text-field": ["get", "city"],
+          "text-font": ["Noto Sans Regular"],
+          "text-size": 10.5,
+          "text-anchor": "top",
+          "text-offset": [0, 1.75],
+          "text-max-width": 12,
+          "text-allow-overlap": true,
+          "text-ignore-placement": true,
+        },
+        paint: {
+          "text-color": [
+            "case",
+            ["==", ["get", "role"], "selected"],
+            "#f7db78",
+            ["==", ["get", "role"], "candidate"],
+            "#d8bd64",
+            ["==", ["get", "role"], "origin"],
+            "#d8bd64",
+            "#9fb0b6",
+          ],
+          "text-halo-color": "rgba(11, 16, 19, 0.94)",
+          "text-halo-width": 1.2,
+        },
+      });
+      const pickAirport = (event: {
+        features?: Array<{ properties?: { iata?: string; role?: string } }>;
+      }) => {
+        const properties = event.features?.[0]?.properties;
+        if (!properties?.iata || properties.role === "origin") return;
+        const selected = this.planningCandidates.find(
+          ({ airport: item }) => item.iata === properties.iata,
+        )?.airport;
+        if (selected) this.airportSelectHandler?.(selected);
+      };
+      for (const layer of ["airports", "airport-names"]) {
+        this.map.on("click", layer, pickAirport);
+        this.map.on("mouseenter", layer, () => {
+          this.map.getCanvas().style.cursor = "pointer";
+        });
+        this.map.on("mouseleave", layer, () => {
+          this.map.getCanvas().style.cursor = "";
+        });
+      }
       this.map.addLayer({
         id: "plane",
         type: "symbol",
@@ -206,7 +377,11 @@ export class FlightMap {
       if (this.arrival) this.land(this.arrival);
       else if (this.flightActive && this.view === "focus" && this.planePosition)
         this.focusPlane();
-      else if (this.selected && (!this.flightActive || this.view === "route"))
+      else if (this.planningOrigin) {
+        if (this.planningDestination)
+          this.framePlanningRoute(this.planningOrigin, this.planningDestination);
+        else this.framePlanning(this.planningOrigin, this.planningCandidates);
+      } else if (this.selected && (!this.flightActive || this.view === "route"))
         this.frame(...this.selected);
     });
   }
@@ -217,7 +392,33 @@ export class FlightMap {
     this.history = flights;
     this.render();
   }
+  setAirportSelectHandler(handler: (airport: Airport) => void) {
+    this.airportSelectHandler = handler;
+  }
+  plan(
+    origin: Airport | undefined,
+    candidates: ReachableAirport[],
+    destination: Airport | undefined,
+    rangeKm: number,
+  ) {
+    this.reserveRight = false;
+    this.arrival = undefined;
+    this.planningOrigin = origin;
+    this.planningCandidates = candidates;
+    this.planningDestination = destination;
+    this.planningRangeKm = rangeKm;
+    this.selected = origin && destination ? [origin, destination] : null;
+    this.endpoints = [];
+    this.render();
+    if (!origin || !this.ready) return;
+    if (destination) this.framePlanningRoute(origin, destination);
+    else this.framePlanning(origin, candidates);
+  }
   select(a?: Airport, b?: Airport, reserveRight = false) {
+    this.planningOrigin = undefined;
+    this.planningCandidates = [];
+    this.planningDestination = undefined;
+    this.planningRangeKm = 0;
     this.reserveRight = reserveRight;
     this.arrival = undefined;
     this.selected = a && b ? [a, b] : null;
@@ -227,9 +428,9 @@ export class FlightMap {
   }
   private render() {
     if (!this.ready) return;
-    const feature = (a: Airport, b: Airport) => ({
+    const feature = (a: Airport, b: Airport, planning = false) => ({
       type: "Feature" as const,
-      properties: {},
+      properties: { planning },
       geometry: {
         type: "LineString" as const,
         coordinates: route(coordinates(a), coordinates(b)),
@@ -245,14 +446,59 @@ export class FlightMap {
     });
     (this.map.getSource("current") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: this.selected ? [feature(...this.selected)] : [],
+      features: this.selected
+        ? [feature(...this.selected, !!this.planningOrigin)]
+        : [],
     });
+    (this.map.getSource("range") as GeoJSONSource).setData({
+      type: "FeatureCollection",
+      features:
+        this.planningOrigin && this.planningRangeKm > 0
+          ? [
+              {
+                type: "Feature" as const,
+                properties: {},
+                geometry: {
+                  type: "Polygon" as const,
+                  coordinates: [
+                    rangePolygon(
+                      coordinates(this.planningOrigin),
+                      this.planningRangeKm,
+                    ),
+                  ],
+                },
+              },
+            ]
+          : [],
+    });
+    const planningAirports: Array<{ airport: Airport; role: string }> = [];
+    if (this.planningOrigin) {
+      planningAirports.push({ airport: this.planningOrigin, role: "origin" });
+      for (const { airport: candidate } of this.planningCandidates)
+        planningAirports.push({
+          airport: candidate,
+          role:
+            candidate.iata === this.planningDestination?.iata
+              ? "selected"
+              : "candidate",
+        });
+    } else {
+      for (const endpoint of this.endpoints)
+        planningAirports.push({ airport: endpoint, role: "endpoint" });
+    }
     (this.map.getSource("airports") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: this.endpoints.map((a) => ({
+      features: planningAirports.map(({ airport: item, role }) => ({
         type: "Feature" as const,
-        properties: { iata: a.iata },
-        geometry: { type: "Point" as const, coordinates: coordinates(a) },
+        properties: {
+          iata: item.iata,
+          city: airportCityLabel(item),
+          role,
+        },
+        geometry: {
+          type: "Point" as const,
+          coordinates: coordinates(item),
+        },
       })),
     });
     this.renderPlane();
@@ -349,6 +595,45 @@ export class FlightMap {
       bearing: 0,
       pitch: 0,
       duration,
+    });
+  }
+  private planningPadding() {
+    const planner = document.getElementById("planner");
+    const plannerHeight =
+      planner && !planner.hidden ? planner.getBoundingClientRect().height : 0;
+    return {
+      top: 66,
+      bottom: Math.max(92, Math.ceil(plannerHeight) + 66),
+      left: 66,
+      right: 66,
+    };
+  }
+  private framePlanning(origin: Airport, candidates: ReachableAirport[]) {
+    if (!this.ready) return;
+    const bounds = new LngLatBounds();
+    const range = rangePolygon(coordinates(origin), this.planningRangeKm);
+    for (const point of range) bounds.extend(point);
+    bounds.extend(coordinates(origin));
+    for (const { airport: candidate } of candidates)
+      bounds.extend(coordinates(candidate));
+    this.map.fitBounds(bounds, {
+      padding: this.planningPadding(),
+      duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 320,
+      linear: true,
+      maxZoom: 8.5,
+    });
+  }
+  private framePlanningRoute(origin: Airport, destination: Airport) {
+    if (!this.ready) return;
+    const bounds = new LngLatBounds();
+    route(coordinates(origin), coordinates(destination)).forEach((point) =>
+      bounds.extend(point),
+    );
+    this.map.fitBounds(bounds, {
+      padding: this.planningPadding(),
+      duration: matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 360,
+      linear: true,
+      maxZoom: 8.5,
     });
   }
   showRoute() {
