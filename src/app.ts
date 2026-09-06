@@ -24,12 +24,12 @@ import {
 
 export function start() {
   const root = document.querySelector<HTMLDivElement>("#app")!;
-  root.innerHTML = `<header><span id="brand" class="brand">航刻</span><button id="history-toggle">航迹</button></header>
+  root.innerHTML = `<header><button id="history-toggle" class="history-tool-button" type="button" aria-label="航迹" data-tooltip="航迹" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"></path><path d="M8.5 8h7M8.5 12h3.5M8.5 16h7"></path><circle cx="15.5" cy="12" r="1.4"></circle></svg></button></header>
     <div id="notice" role="alert" hidden></div><div id="map-error" role="alert" hidden>地图加载失败 <button id="retry">重试</button></div>
     <form id="planner" autocomplete="off"><div class="airport-field"><label for="origin">出发机场</label><input id="origin" placeholder="机场 / 城市" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-results"><div id="origin-results" class="results" role="listbox" hidden></div></div>
     <label class="duration">专注时长<select id="duration" aria-label="专注时长"></select></label><span class="arrow" aria-hidden="true">→</span><div class="airport-field"><label for="destination">可达目的地</label><input id="destination" placeholder="先选择出发机场和时长" readonly role="combobox" aria-expanded="false" aria-controls="destination-results"><div id="destination-results" class="results" role="listbox" hidden></div></div>
     <label class="task-field">当前任务<input id="task" placeholder="准备专注什么？" maxlength="200"></label><button id="takeoff" class="primary" disabled>起飞</button><output id="distance"></output></form>
-    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
+    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button></div><div class="flight-pause-control"><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
     <section id="landing" class="result" hidden aria-label="航程完成"><p id="landing-route"></p><h1>航程完成</h1><p id="landing-metrics"></p><p id="landing-task"></p><button id="done" class="primary">完成</button></section>
     <aside id="history" hidden aria-label="航迹"><h1>航迹</h1><div id="history-list"></div><div id="details" hidden></div></aside>`;
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -305,13 +305,14 @@ export function start() {
     }
   };
   const render = () => {
-    show("brand", !state.activeFlight);
     show("planner", !state.activeFlight && !landed && !historyMode);
     show("flight", !!state.activeFlight);
     show("landing", !!landed);
     show("history", historyMode);
     show("history-toggle", !state.activeFlight && !landed);
-    el("history-toggle").textContent = historyMode ? "返回" : "航迹";
+    const historyToggle = el<HTMLButtonElement>("history-toggle");
+    historyToggle.setAttribute("aria-pressed", String(historyMode));
+    historyToggle.setAttribute("aria-label", historyMode ? "关闭航迹" : "航迹");
     map?.setHistory(state.flights);
     if (state.activeFlight) {
       const f = state.activeFlight;

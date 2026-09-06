@@ -77,29 +77,70 @@ label {
 }
 header {
   position: absolute;
-  inset: 28px 32px auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  top: 28px;
+  right: 32px;
+  z-index: 4;
   pointer-events: none;
 }
-.brand {
-  font-size: 20px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-shadow: 0 2px 12px #000;
-}
-header button {
+.history-tool-button {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  place-items: center;
+  overflow: visible;
   pointer-events: auto;
-  min-height: 34px;
-  padding: 7px 10px;
-  border-color: #ffffff10;
-  border-radius: 10px;
-  background: #151d22a8;
-  color: #9eacb3;
-  font-size: 13px;
+  border: 1px solid #ffffff12;
+  border-radius: 12px;
+  background: #131c21c7;
+  color: #98a7ae;
+  box-shadow:
+    inset 0 1px 0 #ffffff09,
+    0 3px 12px #0003;
+  backdrop-filter: blur(8px);
+}
+.history-tool-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.history-tool-button[aria-pressed="true"] {
+  border-color: #ffffff24;
+  background: #28353bde;
+  color: #d7e1e4;
+}
+.history-tool-button::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  padding: 6px 9px;
+  border: 1px solid #ffffff12;
+  border-radius: 8px;
+  background: #11191de8;
+  color: #d7e1e4;
+  box-shadow: 0 5px 16px #0004;
+  font-size: 12px;
   font-weight: 500;
-  backdrop-filter: blur(10px);
+  line-height: 1.2;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+.history-tool-button:hover::after,
+.history-tool-button:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
 }
 #planner {
   position: absolute;
@@ -216,15 +257,21 @@ header button {
   z-index: 2;
   transform: translate(-50%, -50%) !important;
 }
-.flight-views {
+.flight-views,
+.flight-pause-control {
   position: absolute;
   top: 50%;
-  right: 28px;
   z-index: 4;
+  transform: translateY(-50%);
+}
+.flight-views {
+  right: 28px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  transform: translateY(-50%);
+}
+.flight-pause-control {
+  left: 28px;
 }
 .flight-view-button {
   position: relative;
@@ -235,12 +282,14 @@ header button {
   padding: 0;
   place-items: center;
   overflow: visible;
-  border: 1px solid #ffffff14;
+  border: 1px solid #ffffff12;
   border-radius: 13px;
-  background: #151e23d9;
-  color: #a9b6bc;
-  box-shadow: 0 3px 14px #0003;
-  backdrop-filter: blur(12px);
+  background: #121a1fd4;
+  color: #9dabb2;
+  box-shadow:
+    inset 0 1px 0 #ffffff09,
+    0 3px 13px #0003;
+  backdrop-filter: blur(8px);
   transition:
     background-color 200ms ease,
     border-color 200ms ease,
@@ -271,7 +320,7 @@ header button {
 .pause-flight[aria-pressed="true"] .resume-icon {
   display: block;
 }
-.flight-view-button[aria-pressed="true"] {
+.flight-views .flight-view-button[aria-pressed="true"] {
   border-color: #dbe7e852;
   background: #dce7e8;
   color: #19252a;
@@ -306,6 +355,15 @@ header button {
 .flight-view-button:hover::after,
 .flight-view-button:focus-visible::after {
   opacity: 1;
+  transform: translate(0, -50%);
+}
+.flight-pause-control .flight-view-button::after {
+  right: auto;
+  left: calc(100% + 10px);
+  transform: translate(-5px, -50%);
+}
+.flight-pause-control .flight-view-button:hover::after,
+.flight-pause-control .flight-view-button:focus-visible::after {
   transform: translate(0, -50%);
 }
 .route-label {
@@ -350,13 +408,21 @@ header button {
 }
 #cancel {
   position: relative;
-  min-height: 38px;
-  padding: 8px 14px;
+  width: 148px;
+  min-height: 34px;
+  padding: 7px 18px;
   overflow: hidden;
-  border-color: #ffffff12;
-  background: #11191d70;
-  color: #99a7ae;
-  backdrop-filter: blur(8px);
+  border: 1px solid #ffffff10;
+  border-radius: 999px;
+  background: #10181c70;
+  color: #8f9da4;
+  box-shadow:
+    inset 0 1px 0 #ffffff08,
+    0 3px 12px #0002;
+  backdrop-filter: blur(6px);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
   touch-action: none;
 }
 #cancel span {
@@ -367,20 +433,20 @@ header button {
   content: "";
   position: absolute;
   inset: 0;
-  background: #9f4a523d;
+  background: #9b4e5538;
   transform: scaleX(0);
   transform-origin: left center;
 }
 #cancel.holding {
-  border-color: #b7687042;
-  color: #d6b4b7;
+  border-color: #b7687040;
+  color: #d2b0b3;
 }
 #cancel.holding::before {
   animation: hold-end-progress 1.2s linear forwards;
 }
 #cancel:active:not(:disabled) {
-  background: #3a2528a8;
-  transform: scale(0.97);
+  background: #2d20238c;
+  transform: scale(0.99);
 }
 @keyframes hold-end-progress {
   to {
@@ -483,24 +549,24 @@ header button {
     background: #edf4f5;
     box-shadow: 0 6px 22px #0003;
   }
-  header button:hover:not(:disabled) {
-    border-color: #ffffff18;
-    background: #202b30c7;
-    color: #c2cdd1;
+  .history-tool-button:hover:not(:disabled) {
+    border-color: #ffffff1c;
+    background: #202c32d4;
+    color: #c5d0d4;
   }
   .flight-view-button:hover:not(:disabled) {
     border-color: #ffffff22;
     background: #263239eb;
     color: #d2dcdf;
   }
-  .flight-view-button[aria-pressed="true"]:hover {
+  .flight-views .flight-view-button[aria-pressed="true"]:hover {
     background: #dce7e8;
     color: #19252a;
   }
   #cancel:hover:not(:disabled) {
-    border-color: #bd6f7542;
-    background: #3a242886;
-    color: #d3a8ab;
+    border-color: #a761672d;
+    background: #2b20237a;
+    color: #c0a2a5;
   }
   .results [role="option"]:hover {
     background: #35454e;
@@ -527,8 +593,13 @@ header button {
     width: 85px;
   }
   header {
-    left: 24px;
-    right: 24px;
+    right: 20px;
+  }
+  .flight-views {
+    right: 20px;
+  }
+  .flight-pause-control {
+    left: 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
