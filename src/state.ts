@@ -28,7 +28,9 @@ function validFlight(f: any): boolean {
     f &&
     typeof f.id === "string" &&
     f.id.length > 0 &&
+    typeof f.originIata === "string" &&
     /^[A-Z]{3}$/.test(f.originIata) &&
+    typeof f.destinationIata === "string" &&
     /^[A-Z]{3}$/.test(f.destinationIata) &&
     f.originIata !== f.destinationIata &&
     typeof f.task === "string" &&
@@ -48,7 +50,10 @@ export function decode(raw: string | null): AppState {
     if (
       !s ||
       !Array.isArray(s.flights) ||
-      !(s.lastAirportIata === null || /^[A-Z]{3}$/.test(s.lastAirportIata))
+      !(
+        s.lastAirportIata === null ||
+        (typeof s.lastAirportIata === "string" && /^[A-Z]{3}$/.test(s.lastAirportIata))
+      )
     )
       return emptyState();
     if (

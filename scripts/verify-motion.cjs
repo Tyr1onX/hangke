@@ -11,7 +11,7 @@ let child, connection;
 const pause = ms => new Promise(r => setTimeout(r, ms));
 async function setDuration(page, minutes) {
   await page.locator(`#duration-track [data-minutes="${minutes}"]`).evaluate(element => element.click());
-  await page.waitForFunction(value => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value), minutes);
+  await page.waitForFunction(value => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value) && document.querySelector('#duration')?.dataset.motion === 'idle', minutes);
   await pause(140);
 }
 function installProbe() {
@@ -103,7 +103,6 @@ async function createFlight(page) {
   await page.locator('#boarding-stage').waitFor({state:'visible'});
   assert.equal(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1'))?.activeFlight ?? null),null);
   await page.locator('#next-step').click();
-  await page.locator('#checkin-action').click();
   await page.locator('#checkin-stub').press('Enter');
   await page.locator('#airplane-stage').waitFor({state:'visible'});
   await page.locator('#boarding-action').click();

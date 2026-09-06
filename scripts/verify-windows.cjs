@@ -11,7 +11,7 @@ let connection;
 const pause = (ms) => new Promise((r) => setTimeout(r, ms));
 async function setDuration(page, minutes) {
   await page.locator(`#duration-track [data-minutes="${minutes}"]`).evaluate((element) => element.click());
-  await page.waitForFunction((value) => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value), minutes);
+  await page.waitForFunction((value) => document.querySelector('#duration')?.getAttribute('aria-valuenow') === String(value) && document.querySelector('#duration')?.dataset.motion === 'idle', minutes);
   await pause(140);
 }
 async function createFlight(page) {
@@ -31,7 +31,6 @@ async function createFlight(page) {
   await page.locator("[data-task]").first().click();
   await page.locator("#confirm-seat").click();
   await page.locator("#next-step").click();
-  await page.locator("#checkin-action").click();
   await page.locator("#checkin-stub").press("Enter");
   await page.locator("#airplane-stage").waitFor({ state: "visible" });
   await page.locator("#boarding-action").click();

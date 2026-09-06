@@ -1,3 +1,4 @@
+import { renderTicketCodes } from "./ticket-codes.ts";
 import {
   airports,
   airport,
@@ -53,7 +54,7 @@ export function start() {
           <div class="duration-panel">
             <div class="duration-copy"><span>专注时长</span><strong id="duration-value">60 分钟</strong></div>
             <div class="duration-scale">
-              <div id="duration" class="duration-ruler" role="slider" tabindex="0" aria-label="专注时长" aria-valuemin="30" aria-valuemax="180" aria-valuenow="60" aria-valuetext="60 分钟"><div id="duration-track" class="duration-track" aria-hidden="true"></div></div>
+              <div id="duration" class="duration-ruler" role="slider" tabindex="0" aria-label="专注时长" aria-valuemin="10" aria-valuemax="180" aria-valuenow="60" aria-valuetext="60 分钟"><div id="duration-track" class="duration-track" aria-hidden="true"></div></div>
               <span class="duration-pointer" aria-hidden="true"></span>
             </div>
           </div>
@@ -92,51 +93,56 @@ export function start() {
 
       <section id="boarding-stage" class="preflight-stage boarding-stage" aria-labelledby="boarding-stage-title" hidden>
         <div class="stage-heading compact-heading">
-          <button id="boarding-back" class="back-action" type="button" aria-label="返回选择座位">←</button>
-          <h1 id="boarding-stage-title">登机牌</h1>
+          <button id="boarding-back" class="back-action" type="button" aria-label="\u8fd4\u56de\u9009\u62e9\u5ea7\u4f4d">\u2190</button>
+          <h1 id="boarding-stage-title">\u767b\u673a\u724c</h1>
           <div id="boarding-route-label" class="draft-route-label"></div>
         </div>
-        <article class="boarding-pass" aria-label="登机牌">
-          <div class="boarding-route"><div><strong id="boarding-origin-code">---</strong><span id="boarding-origin-city">---</span></div><span class="boarding-route-arrow" aria-hidden="true">→</span><div><strong id="boarding-destination-code">---</strong><span id="boarding-destination-city">---</span></div></div>
-          <div class="boarding-details"><div><span>TIME</span><strong id="boarding-duration">--</strong></div><div><span>DISTANCE</span><strong id="boarding-distance">--</strong></div><div><span>SEAT</span><strong id="boarding-seat">--</strong></div><div><span>FOCUS</span><strong id="boarding-task">--</strong></div><div><span>DATE</span><strong id="boarding-date"></strong></div></div>
-          <div class="boarding-footer"><span class="boarding-barcode" aria-hidden="true"></span></div>
+        <article class="boarding-pass" aria-label="\u767b\u673a\u724c">
+          <div class="ticket-world-map" aria-hidden="true"></div>
+          <div class="boarding-ticket-main"><span class="ticket-brand">HANGKE / FOCUS FLIGHT</span>
+            <div class="boarding-route"><div><strong id="boarding-origin-code">---</strong><span id="boarding-origin-city">---</span></div><div class="boarding-flight-time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 6-2 4-7 2 1-2 7 5 3c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-5-2-3 4-1.5-.5 1-5-5-1.5Z"></path></svg><strong id="boarding-duration">--</strong></div><div><strong id="boarding-destination-code">---</strong><span id="boarding-destination-city">---</span></div></div>
+            <div class="boarding-details"><div><span>\u5ea7\u4f4d</span><strong id="boarding-seat">--</strong></div><div><span>\u8ddd\u79bb</span><strong id="boarding-distance">--</strong></div><div><span>\u767b\u673a</span><strong id="boarding-time">--:--</strong></div><div><span>\u65e5\u671f</span><strong id="boarding-date"></strong></div></div>
+          </div>
+          <div class="boarding-tear-line" aria-hidden="true"><span></span></div>
+          <div class="boarding-ticket-stub"><canvas id="boarding-barcode" class="boarding-barcode" aria-label="Code 128 barcode"></canvas><canvas id="boarding-qr" class="boarding-qr" width="84" height="84" aria-label="QR code for this local focus session"></canvas></div>
         </article>
-        <div class="boarding-action"><button id="next-step" class="primary" type="button">值机</button></div>
+        <div class="boarding-action"><button id="next-step" class="primary" type="button">\u503c\u673a</button></div>
       </section>
 
       <section id="checkin-stage" class="preflight-stage checkin-stage" aria-labelledby="checkin-title" hidden>
         <div class="stage-heading compact-heading">
-          <button id="checkin-back" class="back-action" type="button" aria-label="返回登机牌">←</button>
-          <h1 id="checkin-title">准备值机</h1>
+          <button id="checkin-back" class="back-action" type="button" aria-label="\u8fd4\u56de\u767b\u673a\u724c">\u2190</button>
+          <h1 id="checkin-title">\u503c\u673a</h1>
           <div id="checkin-route" class="draft-route-label"></div>
         </div>
-        <div id="checkin-card" class="checkin-card">
-          <span class="checkin-status" aria-hidden="true">CHECK IN</span>
-          <strong id="checkin-heading">登机牌已生成</strong>
-          <p id="checkin-copy">点击开始值机，然后拖动票根</p>
-          <div id="checkin-track" class="checkin-track" hidden>
-            <div class="checkin-perforation" aria-hidden="true"></div>
-            <button id="checkin-stub" class="checkin-stub" type="button" aria-label="向右拖动票根完成值机"><span aria-hidden="true">→</span></button>
+        <p id="checkin-instruction" class="checkin-instruction">\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u7968\u6839</p>
+        <article id="checkin-ticket" class="boarding-pass boarding-pass-checkin" aria-label="\u53ef\u6495\u5f00\u7684\u767b\u673a\u724c">
+          <div class="ticket-world-map" aria-hidden="true"></div>
+          <div class="boarding-ticket-main"><span class="ticket-brand">HANGKE / FOCUS FLIGHT</span>
+            <div class="boarding-route"><div><strong id="checkin-origin-code">---</strong><span id="checkin-origin-city">---</span></div><div class="boarding-flight-time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 6-2 4-7 2 1-2 7 5 3c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-5-2-3 4-1.5-.5 1-5-5-1.5Z"></path></svg><strong id="checkin-duration">--</strong></div><div><strong id="checkin-destination-code">---</strong><span id="checkin-destination-city">---</span></div></div>
+            <div class="boarding-details"><div><span>\u5ea7\u4f4d</span><strong id="checkin-seat">--</strong></div><div><span>\u8ddd\u79bb</span><strong id="checkin-distance">--</strong></div><div><span>\u767b\u673a</span><strong id="checkin-time">--:--</strong></div><div><span>\u65e5\u671f</span><strong id="checkin-date"></strong></div></div>
           </div>
-        </div>
-        <div class="boarding-action"><button id="checkin-action" class="primary" type="button">开始值机</button></div>
+          <div class="boarding-tear-line" aria-hidden="true"><span class="tear-notch"></span><span class="tear-cut"></span><span id="checkin-tear-handle" class="tear-handle"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></div>
+          <button id="checkin-stub" class="boarding-ticket-stub boarding-stub-detachable" type="button" aria-label="\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u767b\u673a\u8054"><canvas id="checkin-barcode" class="boarding-barcode" aria-label="Code 128 barcode"></canvas><canvas id="checkin-qr" class="boarding-qr" width="84" height="84" aria-label="QR code for this local focus session"></canvas></button>
+        </article>
       </section>
 
       <section id="airplane-stage" class="preflight-stage airplane-stage" aria-labelledby="airplane-title" hidden>
         <div class="stage-heading compact-heading">
-          <h1 id="airplane-title">飞行模式</h1>
+          <h1 id="airplane-title">\u98de\u884c\u6a21\u5f0f</h1>
           <div id="airplane-route" class="draft-route-label"></div>
         </div>
         <div class="airplane-mode-card">
-          <span class="airplane-mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3.5 12h17M12 3.5v17M5.5 7.5l13 9M18.5 7.5l-13 9"></path></svg></span>
-          <div><strong>减少干扰</strong><p>Windows 应用屏蔽尚未接入，本次航程不会拦截其他应用。</p></div>
+          <span class="airplane-mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3.5 14.5 7-2.4 3.7-7.1 2.2.7-1.8 7.3 5.7 3.5c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-6.4-2.4-3.8 3.2-1.6-.6 1.7-4.3-5.3-.9Z"></path></svg></span>
+          <div><strong>\u4fdd\u6301\u4e13\u6ce8</strong><p>Windows \u7248\u6682\u4e0d\u4f1a\u62e6\u622a\u5176\u4ed6\u5e94\u7528\uff0c\u98de\u884c\u4e0e\u8ba1\u65f6\u672c\u8eab\u4e0d\u53d7\u5f71\u54cd\u3002</p></div>
         </div>
-        <div class="boarding-action"><button id="boarding-action" class="primary" type="button">登机</button></div>
+        <div class="boarding-action"><button id="boarding-action" class="primary" type="button">\u767b\u673a</button></div>
       </section>
 
       <section id="ready-stage" class="preflight-stage ready-stage" aria-labelledby="ready-title" hidden>
-        <div class="ready-copy"><span>CABIN DOORS CLOSED</span><h1 id="ready-title">准备起飞</h1><p id="ready-route"></p></div>
-        <button id="go-takeoff" class="primary ready-go" type="button">GO</button>
+        <span class="ready-plane-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M4 23h24M7 20l7-3 4-10 3 1-2 10 7 3c1.3.6 1.6 2.3.6 3.3-.7.7-1.7.8-2.6.4l-7-2.6-5 5-2-.7 2-6-5-1.4Z"></path></svg></span>
+        <div class="ready-copy"><span>\u8231\u95e8\u5173\u95ed</span><h1 id="ready-title">\u98de\u884c\u5373\u5c06\u5f00\u59cb</h1><p id="ready-route"></p></div>
+        <button id="go-takeoff" class="primary ready-go" type="button">\u51fa\u53d1\uff01</button>
       </section>
 
       <section id="origin-sheet" class="origin-sheet" aria-labelledby="origin-sheet-title" hidden>
@@ -148,8 +154,8 @@ export function start() {
           <div id="origin-results" class="results" role="listbox" hidden></div>
         </div>
         <div id="origin-confirm" class="origin-confirm" hidden>
-          <div><span>STARTING FROM HERE?</span><strong id="origin-confirm-code">---</strong><small id="origin-confirm-city"></small></div>
-          <div class="origin-confirm-actions"><button id="origin-cancel" class="text-action" type="button">??</button><button id="origin-apply" class="primary" type="button">??</button></div>
+          <div><span>\u4ece\u8fd9\u91cc\u51fa\u53d1\uff1f</span><strong id="origin-confirm-code">---</strong><small id="origin-confirm-city"></small></div>
+          <div class="origin-confirm-actions"><button id="origin-cancel" class="text-action" type="button">\u53d6\u6d88</button><button id="origin-apply" class="primary" type="button">\u786e\u8ba4</button></div>
         </div>
       </section>
     </form>
@@ -229,34 +235,37 @@ export function start() {
   let checkinStarted = false;
   let checkinCompleted = false;
   let checkinProgress = 0;
+  let checkinCompletionId = 0;
   let pendingOrigin: Airport | undefined;
   let durationMinutes = 60;
   let selectedSeat = "";
   let selectedTask = "";
+  let boardingAt = new Date();
   const durationRuler = el<HTMLDivElement>("duration"),
     durationTrack = el<HTMLDivElement>("duration-track");
-  const durationMin = 30,
+  const durationMin = 10,
     durationMax = 180,
     durationStep = 5,
     durationTickWidth = 24;
-  let expectedDurationScroll: number | undefined;
+  let durationPosition = ((durationMinutes - durationMin) / durationStep) * durationTickWidth;
+  let durationVelocity = 0;
+  let durationMotionFrame: number | null = null;
+  let durationMotionTarget: number | null = null;
+  let durationMotionTime = 0;
+  let durationGeometryWidth = 0;
+  let durationDrag: { pointerId: number; lastX: number; lastTime: number; moved: boolean } | undefined;
+  let suppressDurationClick = false;
+  let lastCandidateDuration = durationMinutes;
   const validDuration = () =>
     durationMinutes >= durationMin &&
     durationMinutes <= durationMax &&
     durationMinutes % durationStep === 0;
   const durationIndex = (minutes: number) =>
     Math.round((minutes - durationMin) / durationStep);
-  const syncDurationVisual = (scroll = false) => {
+  const syncDurationVisual = () => {
     el("duration-value").textContent = `${durationMinutes} 分钟`;
     durationRuler.setAttribute("aria-valuenow", String(durationMinutes));
     durationRuler.setAttribute("aria-valuetext", `${durationMinutes} 分钟`);
-    if (scroll) {
-      expectedDurationScroll = durationIndex(durationMinutes) * durationTickWidth;
-      durationRuler.scrollTo({
-        left: expectedDurationScroll,
-        behavior: "auto",
-      });
-    }
   };
   for (let minutes = durationMin; minutes <= durationMax; minutes += durationStep) {
     const tick = document.createElement("span");
@@ -278,7 +287,13 @@ export function start() {
     const side = Math.max(0, (durationRuler.clientWidth - durationTickWidth) / 2);
     durationTrack.style.paddingLeft = `${side}px`;
     durationTrack.style.paddingRight = `${side}px`;
-    syncDurationVisual(true);
+    if (durationGeometryWidth !== durationRuler.clientWidth) {
+      durationGeometryWidth = durationRuler.clientWidth;
+      const clamped = Math.min(durationIndex(durationMax) * durationTickWidth, Math.max(0, durationPosition));
+      durationRuler.scrollLeft = clamped;
+      durationTrack.style.transform = `translate3d(${clamped - durationPosition}px,0,0)`;
+    }
+    syncDurationVisual();
   };
   const durationResizeObserver = new ResizeObserver(syncDurationGeometry);
   durationResizeObserver.observe(durationRuler);
@@ -288,6 +303,8 @@ export function start() {
     [date.getFullYear(), date.getMonth() + 1, date.getDate()]
       .map((part) => String(part).padStart(2, "0"))
       .join(".");
+  const formatTime = (date: Date) =>
+    `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
   const setOriginInput = (a?: Airport) => {
     el<HTMLInputElement>("origin").value = a?.iata || "";
     el("origin-name").textContent = a ? airportPlanningLabel(a) : "";
@@ -302,7 +319,9 @@ export function start() {
       origin &&
       destination &&
       origin.iata !== destination.iata &&
-      validDuration()
+      validDuration() &&
+      durationRuler.dataset.motion !== "dragging" &&
+      durationRuler.dataset.motion !== "settling"
     );
     const confirmSeat = el<HTMLButtonElement>("confirm-seat");
     confirmSeat.disabled = !(selectedSeat && selectedTask);
@@ -338,21 +357,30 @@ export function start() {
       origin && destination
         ? `${origin.iata} → ${destination.iata} · ${durationMinutes} MIN`
         : "";
-    el("boarding-origin-code").textContent = origin?.iata || "---";
-    el("boarding-origin-city").textContent = origin
-      ? airportPlanningLabel(origin)
-      : "---";
-    el("boarding-destination-code").textContent = destination?.iata || "---";
-    el("boarding-destination-city").textContent = destination
-      ? airportPlanningLabel(destination)
-      : "---";
-    el("boarding-duration").textContent = `${durationMinutes} MIN`;
-    el("boarding-distance").textContent = actualDistanceKm
-      ? `${Math.round(actualDistanceKm).toLocaleString()} KM`
-      : "--";
-    el("boarding-seat").textContent = selectedSeat || "--";
-    el("boarding-task").textContent = selectedTask || "--";
-    el("boarding-date").textContent = formatDate(new Date());
+    const originCity = origin ? airportPlanningLabel(origin) : "---";
+    const destinationCity = destination ? airportPlanningLabel(destination) : "---";
+    for (const prefix of ["boarding", "checkin"]) {
+      el(`${prefix}-origin-code`).textContent = origin?.iata || "---";
+      el(`${prefix}-origin-city`).textContent = originCity;
+      el(`${prefix}-destination-code`).textContent = destination?.iata || "---";
+      el(`${prefix}-destination-city`).textContent = destinationCity;
+      el(`${prefix}-duration`).textContent = `${durationMinutes} MIN`;
+      el(`${prefix}-distance`).textContent = actualDistanceKm
+        ? `${Math.round(actualDistanceKm).toLocaleString()} KM`
+        : "--";
+      el(`${prefix}-seat`).textContent = selectedSeat || "--";
+      el(`${prefix}-time`).textContent = formatTime(boardingAt);
+      el(`${prefix}-date`).textContent = formatDate(boardingAt);
+    }
+    const ticketPayload = [
+      origin?.iata || "---",
+      destination?.iata || "---",
+      selectedSeat || "--",
+      durationMinutes,
+      formatDate(boardingAt),
+      formatTime(boardingAt),
+    ].join("|");
+    renderTicketCodes("boarding", "checkin", ticketPayload);
   };
 
   const originInput = el<HTMLInputElement>("origin"),
@@ -369,6 +397,11 @@ export function start() {
   const flightCarousel = el<HTMLDivElement>("flight-carousel");
   let destinationMatches: ReachableAirport[] = [];
   const refreshDestinations = (scrollToSelected = false) => {
+    if (durationRefreshTimer !== undefined) {
+      window.clearTimeout(durationRefreshTimer);
+      durationRefreshTimer = undefined;
+    }
+    lastCandidateDuration = durationMinutes;
     destinationMatches =
       origin && validDuration() ? reachable(origin, durationMinutes) : [];
     if (
@@ -557,7 +590,7 @@ export function start() {
   originInput.onblur = closeOrigin;
 
   const seatGrid = el<HTMLDivElement>("seat-grid");
-  for (let row = 1; row <= 7; row += 1) {
+  for (let row = 1; row <= 22; row += 1) {
     const rowNumber = String(row).padStart(2, "0");
     const seatRow = document.createElement("div");
     seatRow.className = "seat-row";
@@ -665,21 +698,12 @@ export function start() {
     const focusPicker = el("focus-picker");
     focusPicker.hidden = !selectedSeat;
     focusPicker.classList.toggle("is-visible", !!selectedSeat);
-    const checkinTrack = el("checkin-track");
-    checkinTrack.hidden = !checkinStarted || checkinCompleted;
-    el("checkin-card").classList.toggle("is-started", checkinStarted);
-    el("checkin-card").classList.toggle("is-complete", checkinCompleted);
-    el("checkin-heading").textContent = checkinCompleted
-      ? "值机完成"
-      : checkinStarted
-        ? "拖动票根完成值机"
-        : "登机牌已生成";
-    el("checkin-copy").textContent = checkinCompleted
-      ? "票根已分离"
-      : checkinStarted
-        ? "将票根拖到右侧"
-        : "点击开始值机，然后拖动票根";
-    show("checkin-action", preflightStage === "checkin" && !checkinStarted);
+    const checkinTicket = el("checkin-ticket");
+    checkinTicket.classList.toggle("is-tearing", checkinStarted && !checkinCompleted);
+    checkinTicket.classList.toggle("is-torn", checkinCompleted);
+    el("checkin-instruction").textContent = checkinCompleted
+      ? "\u503c\u673a\u5b8c\u6210"
+      : "\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u7968\u6839";
     refreshPlanner();
     if (preflightStage === "home") map?.select(origin);
     else if (preflightStage === "flight")
@@ -694,116 +718,204 @@ export function start() {
   };
 
   let durationRefreshTimer: number | undefined;
-  const settleDuration = () => {
-    const snapped = Math.min(
+  const maxDurationPosition = () => durationIndex(durationMax) * durationTickWidth;
+  const queueDurationCandidates = (immediate = false) => {
+    if (durationRefreshTimer !== undefined) window.clearTimeout(durationRefreshTimer);
+    const update = () => {
+      durationRefreshTimer = undefined;
+      if (lastCandidateDuration === durationMinutes) return;
+      destination = undefined;
+      refreshDestinations();
+    };
+    if (immediate) update();
+    else durationRefreshTimer = window.setTimeout(update, 64);
+  };
+  const updateDurationFromPosition = () => {
+    const clamped = Math.min(maxDurationPosition(), Math.max(0, durationPosition));
+    const next = Math.min(
       durationMax,
       Math.max(
         durationMin,
-        durationMin +
-          Math.round(durationRuler.scrollLeft / durationTickWidth) *
-            durationStep,
+        durationMin + Math.round(clamped / durationTickWidth) * durationStep,
       ),
     );
-    durationMinutes = snapped;
-    syncDurationVisual(true);
-    destination = undefined;
-    refreshDestinations();
+    if (next === durationMinutes) return;
+    durationMinutes = next;
+    syncDurationVisual();
+    queueDurationCandidates();
   };
-  const scheduleDurationSettle = () => {
-    if (durationRefreshTimer !== undefined)
-      window.clearTimeout(durationRefreshTimer);
-    durationRefreshTimer = window.setTimeout(() => {
-      durationRefreshTimer = undefined;
-      settleDuration();
-    }, 130);
+  const paintDurationPosition = () => {
+    const max = maxDurationPosition();
+    const clamped = Math.min(max, Math.max(0, durationPosition));
+    const overscroll = clamped - durationPosition;
+    durationRuler.scrollLeft = clamped;
+    durationTrack.style.transform = `translate3d(${overscroll}px,0,0)`;
+    updateDurationFromPosition();
   };
-  const applyDuration = (minutes: number, scroll: boolean) => {
-    if (durationRefreshTimer !== undefined) {
-      window.clearTimeout(durationRefreshTimer);
-      durationRefreshTimer = undefined;
+  const stopDurationMotion = () => {
+    if (durationMotionFrame !== null) cancelAnimationFrame(durationMotionFrame);
+    durationMotionFrame = null;
+    durationMotionTarget = null;
+    durationVelocity = 0;
+    durationRuler.dataset.motion = "idle";
+  };
+  const settleDurationTarget = () => {
+    const clamped = Math.min(maxDurationPosition(), Math.max(0, durationPosition));
+    durationMotionTarget = Math.round(clamped / durationTickWidth) * durationTickWidth;
+  };
+  const animateDurationMotion = (now: number) => {
+    durationMotionFrame = null;
+    const dt = Math.min(32, Math.max(1, durationMotionTime ? now - durationMotionTime : 16));
+    durationMotionTime = now;
+    const max = maxDurationPosition();
+    if (durationMotionTarget === null) {
+      durationPosition += durationVelocity * dt;
+      const bound = durationPosition < 0 ? 0 : durationPosition > max ? max : null;
+      if (bound !== null) {
+        durationVelocity += (bound - durationPosition) * 0.00042 * dt;
+        durationVelocity *= Math.exp(-0.008 * dt);
+        durationPosition = Math.min(max + 46, Math.max(-46, durationPosition));
+      } else {
+        durationVelocity *= Math.exp(-0.0032 * dt);
+      }
+      if (Math.abs(durationVelocity) < 0.035) settleDurationTarget();
+    } else {
+      const delta = durationMotionTarget - durationPosition;
+      durationVelocity += delta * 0.00026 * dt;
+      durationVelocity *= Math.exp(-0.012 * dt);
+      durationPosition += durationVelocity * dt;
+      if (Math.abs(delta) < 0.16 && Math.abs(durationVelocity) < 0.008) {
+        durationPosition = durationMotionTarget;
+        durationVelocity = 0;
+        paintDurationPosition();
+        durationTrack.style.transform = "translate3d(0,0,0)";
+        durationMotionTarget = null;
+        durationRuler.dataset.motion = "idle";
+        queueDurationCandidates(true);
+        refreshPlanner();
+        return;
+      }
     }
+    paintDurationPosition();
+    durationMotionFrame = requestAnimationFrame(animateDurationMotion);
+  };
+  const startDurationMotion = () => {
+    if (durationMotionFrame !== null) return;
+    durationMotionTime = performance.now();
+    durationRuler.dataset.motion = "settling";
+    durationMotionFrame = requestAnimationFrame(animateDurationMotion);
+  };
+  const springDurationTo = (minutes: number) => {
     const snapped = Math.min(
       durationMax,
       Math.max(durationMin, Math.round(minutes / durationStep) * durationStep),
     );
+    stopDurationMotion();
     durationMinutes = snapped;
-    syncDurationVisual(scroll);
-    destination = undefined;
-    refreshDestinations();
-  };
-  durationRuler.addEventListener(
-    "scroll",
-    () => {
-      if (
-        expectedDurationScroll !== undefined &&
-        Math.abs(durationRuler.scrollLeft - expectedDurationScroll) < 1
-      ) {
-        expectedDurationScroll = undefined;
-        return;
-      }
-      expectedDurationScroll = undefined;
-      const next = Math.min(
-        durationMax,
-        Math.max(
-          durationMin,
-          durationMin +
-            Math.round(durationRuler.scrollLeft / durationTickWidth) *
-              durationStep,
-        ),
-      );
-      if (next !== durationMinutes) {
-        durationMinutes = next;
-        syncDurationVisual();
-      }
-      scheduleDurationSettle();
-    },
-    { passive: true },
-  );
-  durationTrack.onclick = (event) => {
-    const target = (event.target as HTMLElement).closest<HTMLElement>(
-      "[data-minutes]",
-    );
-    if (!target) return;
-    applyDuration(Number(target.dataset.minutes), true);
-  };
-  let durationDrag: { pointerId: number; x: number; left: number } | undefined;
-  durationRuler.onpointerdown = (event) => {
-    if (!event.isPrimary || event.button !== 0 || event.pointerType !== "mouse")
+    syncDurationVisual();
+    durationMotionTarget = durationIndex(snapped) * durationTickWidth;
+    durationVelocity = 0;
+    queueDurationCandidates();
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      durationPosition = durationMotionTarget;
+      durationMotionTarget = null;
+      paintDurationPosition();
+      durationRuler.dataset.motion = "idle";
+      refreshPlanner();
       return;
+    }
+    startDurationMotion();
+  };
+  durationTrack.onclick = (event) => {
+    if (durationDrag || suppressDurationClick) return;
+    const target = (event.target as HTMLElement).closest<HTMLElement>("[data-minutes]");
+    if (!target) return;
+    springDurationTo(Number(target.dataset.minutes));
+  };
+  durationRuler.onpointerdown = (event) => {
+    if (!event.isPrimary || event.button !== 0) return;
+    stopDurationMotion();
+    durationPosition = durationRuler.scrollLeft;
+    durationVelocity = 0;
     durationDrag = {
       pointerId: event.pointerId,
-      x: event.clientX,
-      left: durationRuler.scrollLeft,
+      lastX: event.clientX,
+      lastTime: performance.now(),
+      moved: false,
     };
     durationRuler.setPointerCapture(event.pointerId);
     durationRuler.classList.add("dragging");
+    durationRuler.dataset.motion = "dragging";
   };
   durationRuler.onpointermove = (event) => {
     if (!durationDrag || durationDrag.pointerId !== event.pointerId) return;
-    durationRuler.scrollLeft =
-      durationDrag.left - (event.clientX - durationDrag.x);
+    const now = performance.now();
+    const dx = event.clientX - durationDrag.lastX;
+    const dt = Math.max(1, now - durationDrag.lastTime);
+    if (Math.abs(dx) > 1) durationDrag.moved = true;
+    let next = durationPosition - dx;
+    const max = maxDurationPosition();
+    if (durationPosition < 0 || durationPosition > max || next < 0 || next > max)
+      next = durationPosition - dx * 0.34;
+    next = Math.min(max + 46, Math.max(-46, next));
+    const instantaneous = (next - durationPosition) / dt;
+    durationVelocity = durationVelocity * 0.58 + instantaneous * 0.42;
+    durationPosition = next;
+    durationDrag.lastX = event.clientX;
+    durationDrag.lastTime = now;
+    paintDurationPosition();
   };
   const finishDurationDrag = (event: PointerEvent) => {
     if (!durationDrag || durationDrag.pointerId !== event.pointerId) return;
+    const moved = durationDrag.moved;
+    if (performance.now() - durationDrag.lastTime > 80) durationVelocity = 0;
     durationDrag = undefined;
     durationRuler.classList.remove("dragging");
-    scheduleDurationSettle();
+    if (moved) {
+      suppressDurationClick = true;
+      window.setTimeout(() => { suppressDurationClick = false; }, 0);
+    }
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      durationPosition = Math.round(Math.min(maxDurationPosition(), Math.max(0, durationPosition)) / durationTickWidth) * durationTickWidth;
+      durationVelocity = 0;
+      paintDurationPosition();
+      durationRuler.dataset.motion = "idle";
+      queueDurationCandidates(true);
+      refreshPlanner();
+    } else startDurationMotion();
   };
   durationRuler.onpointerup = finishDurationDrag;
   durationRuler.onpointercancel = finishDurationDrag;
+  durationRuler.addEventListener(
+    "wheel",
+    (event) => {
+      if (preflightStage !== "flight" || event.ctrlKey) return;
+      event.preventDefault();
+      const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? durationRuler.clientWidth : 1;
+      const delta = (Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY) * unit;
+      if (durationMotionFrame === null) {
+        durationPosition = durationRuler.scrollLeft;
+        durationMotionTime = performance.now();
+      }
+      durationMotionTarget = null;
+      durationVelocity = Math.max(-3.5, Math.min(3.5, durationVelocity + Math.max(-240, Math.min(240, delta)) * 0.0035));
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches)
+        springDurationTo(durationMinutes + Math.sign(delta) * durationStep);
+      else startDurationMotion();
+    },
+    { passive: false },
+  );
   durationRuler.onkeydown = (event) => {
     let next = durationMinutes;
-    if (event.key === "ArrowLeft" || event.key === "ArrowDown")
-      next -= durationStep;
-    else if (event.key === "ArrowRight" || event.key === "ArrowUp")
-      next += durationStep;
+    if (event.key === "ArrowLeft" || event.key === "ArrowDown") next -= durationStep;
+    else if (event.key === "ArrowRight" || event.key === "ArrowUp") next += durationStep;
     else if (event.key === "Home") next = durationMin;
     else if (event.key === "End") next = durationMax;
     else if (event.key === "PageDown") next -= 30;
     else if (event.key === "PageUp") next += 30;
     else return;
     event.preventDefault();
-    applyDuration(next, true);
+    springDurationTo(next);
   };
   map?.setAirportSelectHandler((selectedAirport) => {
     if (
@@ -836,6 +948,7 @@ export function start() {
     requestAnimationFrame(syncDurationGeometry);
   };
   el<HTMLButtonElement>("flight-back").onclick = () => {
+    stopDurationMotion();
     preflightStage = "home";
     renderPreflight();
   };
@@ -849,9 +962,7 @@ export function start() {
     renderPreflight();
   };
   el<HTMLButtonElement>("checkin-back").onclick = () => {
-    checkinStarted = false;
-    checkinCompleted = false;
-    checkinProgress = 0;
+    resetCheckin();
     preflightStage = "boarding";
     renderPreflight();
   };
@@ -863,6 +974,9 @@ export function start() {
       !destination
     )
       return;
+    stopDurationMotion();
+    durationPosition = durationIndex(durationMinutes) * durationTickWidth;
+    paintDurationPosition();
     preflightStage = "seat";
     map?.select();
     renderPreflight();
@@ -871,9 +985,8 @@ export function start() {
   el<HTMLButtonElement>("confirm-seat").onclick = () => {
     if (!origin || !destination || !selectedSeat || !selectedTask) return;
     preflightStage = "boarding";
-    checkinStarted = false;
-    checkinCompleted = false;
-    checkinProgress = 0;
+    boardingAt = new Date();
+    resetCheckin();
     map?.select(origin, destination);
     renderPreflight();
     el("next-step").focus();
@@ -881,66 +994,89 @@ export function start() {
   el<HTMLButtonElement>("next-step").onclick = () => {
     if (!origin || !destination || !selectedSeat || !selectedTask) return;
     preflightStage = "checkin";
-    checkinStarted = false;
-    checkinCompleted = false;
-    checkinProgress = 0;
-    renderPreflight();
-    el("checkin-action").focus();
-  };
-  el<HTMLButtonElement>("checkin-action").onclick = () => {
+    resetCheckin();
     checkinStarted = true;
-    checkinCompleted = false;
-    checkinProgress = 0;
     renderPreflight();
+    paintCheckinProgress();
     requestAnimationFrame(() => el("checkin-stub").focus());
   };
   const checkinStub = el<HTMLButtonElement>("checkin-stub");
-  const checkinTrack = el<HTMLDivElement>("checkin-track");
-  let checkinDrag: { pointerId: number; startX: number; startProgress: number } | undefined;
+  const checkinTicket = el<HTMLElement>("checkin-ticket");
+  let checkinDrag: { pointerId: number; startX: number; startProgress: number; travel: number } | undefined;
   const paintCheckinProgress = () => {
-    checkinTrack.style.setProperty("--checkin-progress", String(checkinProgress));
+    checkinTicket.style.setProperty("--tear-progress", String(checkinProgress));
+    const seam = el<HTMLElement>("checkin-tear-handle").parentElement!;
+    const travel = Math.max(0, seam.clientWidth - 40);
+    checkinTicket.style.setProperty("--tear-x", `${checkinProgress * travel}px`);
+    checkinTicket.style.setProperty("--tear-drop", `${checkinProgress * 18}px`);
+    checkinTicket.style.setProperty("--tear-angle", `${checkinProgress * -1.8}deg`);
+    checkinTicket.style.setProperty("--tear-cut", `${checkinProgress * 100}%`);
     checkinStub.setAttribute("aria-valuenow", String(Math.round(checkinProgress * 100)));
   };
+  function resetCheckin() {
+    checkinCompletionId += 1;
+    checkinStarted = false;
+    checkinCompleted = false;
+    checkinProgress = 0;
+    checkinDrag = undefined;
+    checkinTicket.classList.remove("dragging", "springing", "is-torn");
+    paintCheckinProgress();
+  }
   const completeCheckin = () => {
+    if (checkinCompleted || !checkinStarted || preflightStage !== "checkin") return;
+    const completionId = ++checkinCompletionId;
     checkinProgress = 1;
     checkinCompleted = true;
+    checkinTicket.classList.remove("dragging", "springing");
     paintCheckinProgress();
     renderPreflight();
     window.setTimeout(() => {
-      if (!checkinCompleted || preflightStage !== "checkin") return;
+      if (completionId !== checkinCompletionId || !checkinCompleted || preflightStage !== "checkin") return;
       preflightStage = "airplane";
       renderPreflight();
       el("boarding-action").focus();
-    }, 420);
+    }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650);
   };
   checkinStub.setAttribute("role", "slider");
+  checkinStub.setAttribute("aria-orientation", "horizontal");
   checkinStub.setAttribute("aria-valuemin", "0");
   checkinStub.setAttribute("aria-valuemax", "100");
   checkinStub.setAttribute("aria-valuenow", "0");
-  checkinStub.onpointerdown = (event) => {
-    if (!checkinStarted || checkinCompleted || event.button !== 0) return;
-    checkinDrag = { pointerId: event.pointerId, startX: event.clientX, startProgress: checkinProgress };
-    checkinStub.setPointerCapture(event.pointerId);
-    checkinTrack.classList.add("dragging");
+  checkinTicket.onpointerdown = (event) => {
+    if (!checkinStarted || checkinCompleted || checkinDrag || event.button !== 0 || !event.isPrimary) return;
+    if (!(event.target as Element).closest("#checkin-stub, #checkin-tear-handle")) return;
+    event.preventDefault();
+    const seam = el<HTMLElement>("checkin-tear-handle").parentElement!.getBoundingClientRect();
+    checkinDrag = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startProgress: checkinProgress,
+      travel: Math.max(1, seam.right - event.clientX - 20),
+    };
+    checkinTicket.setPointerCapture(event.pointerId);
+    checkinTicket.classList.remove("springing");
+    checkinTicket.classList.add("dragging");
   };
-  checkinStub.onpointermove = (event) => {
+  checkinTicket.onpointermove = (event) => {
     if (!checkinDrag || checkinDrag.pointerId !== event.pointerId) return;
-    const travel = Math.max(1, checkinTrack.clientWidth - checkinStub.offsetWidth - 12);
-    checkinProgress = Math.min(1, Math.max(0, checkinDrag.startProgress + (event.clientX - checkinDrag.startX) / travel));
+    checkinProgress = Math.min(1, Math.max(0, checkinDrag.startProgress + (event.clientX - checkinDrag.startX) / checkinDrag.travel));
     paintCheckinProgress();
-    if (checkinProgress >= 0.88) completeCheckin();
   };
   const finishCheckinDrag = (event: PointerEvent) => {
     if (!checkinDrag || checkinDrag.pointerId !== event.pointerId) return;
     checkinDrag = undefined;
-    checkinTrack.classList.remove("dragging");
-    if (!checkinCompleted) {
+    checkinTicket.classList.remove("dragging");
+    if (event.type !== "pointercancel" && checkinProgress >= 0.85) {
+      completeCheckin();
+    } else if (!checkinCompleted) {
+      checkinTicket.classList.add("springing");
       checkinProgress = 0;
       paintCheckinProgress();
+      window.setTimeout(() => checkinTicket.classList.remove("springing"), 360);
     }
   };
-  checkinStub.onpointerup = finishCheckinDrag;
-  checkinStub.onpointercancel = finishCheckinDrag;
+  checkinTicket.onpointerup = finishCheckinDrag;
+  checkinTicket.onpointercancel = finishCheckinDrag;
   checkinStub.onkeydown = (event) => {
     if ((event.key === "Enter" || event.key === " ") && checkinStarted && !checkinCompleted) {
       event.preventDefault();
@@ -974,9 +1110,7 @@ export function start() {
         },
       })
     ) {
-      checkinStarted = false;
-      checkinCompleted = false;
-      checkinProgress = 0;
+      resetCheckin();
       render();
       tick();
       el("cancel").focus();
@@ -1172,7 +1306,7 @@ export function start() {
         map?.select(a, b, true);
         el("details").replaceChildren();
         for (const text of [
-          `${a ? airportPlanningLabel(a) : f.originIata} ? ${b ? airportPlanningLabel(b) : f.destinationIata}`,
+          `${a ? airportPlanningLabel(a) : f.originIata} → ${b ? airportPlanningLabel(b) : f.destinationIata}`,
           new Date(f.completedAt).toLocaleString("zh-CN"),
           `${f.durationSeconds / 60} min · ${Math.round(f.distanceKm).toLocaleString()} km`,
           f.task,

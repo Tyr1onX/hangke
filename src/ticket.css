@@ -1,0 +1,229 @@
+/* Local boarding-pass surface and horizontal check-in tear. */
+#planner .boarding-pass {
+  --tear-progress: 0;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 22px 108px;
+  min-height: 0;
+  margin: 18px 24px;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #ffffff22;
+  border-radius: 18px;
+  background: #24292c;
+  color: #e7ebeb;
+  box-shadow: 0 18px 42px #0005, inset 0 1px 0 #ffffff0a;
+}
+#planner .boarding-pass::after { content: none; }
+#planner .boarding-pass .ticket-world-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: auto;
+  height: auto;
+  background: url('./assets/ticket-world.svg') center / contain no-repeat;
+  opacity: .24;
+  pointer-events: none;
+}
+#planner .boarding-pass .boarding-ticket-main {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 1;
+  padding: 25px 29px 18px;
+  background: transparent;
+  color: #e7ebeb;
+}
+#planner .boarding-pass .ticket-brand {
+  margin-bottom: 20px;
+  color: #859396;
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: .16em;
+}
+#planner .boarding-pass .boarding-route {
+  grid-template-columns: minmax(0,1fr) auto minmax(0,1fr);
+  min-height: 75px;
+  gap: 12px;
+  padding: 0 0 19px;
+  border-bottom: 1px solid #ffffff1a;
+}
+#planner .boarding-pass .boarding-route strong {
+  color: #f0f3f2;
+  font-size: 35px;
+  font-weight: 750;
+  letter-spacing: .11em;
+}
+#planner .boarding-pass .boarding-route span:not(.boarding-route-arrow) {
+  color: #a1aeb0;
+  font-size: 12px;
+}
+#planner .boarding-pass .boarding-flight-time { min-width: 88px; color: #aab6b8; }
+#planner .boarding-pass .boarding-flight-time strong { color: #aab6b8; font-size: 11px; letter-spacing: .06em; }
+#planner .boarding-pass .boarding-details {
+  grid-template-columns: repeat(4,minmax(0,1fr));
+  gap: 16px;
+  padding: 18px 0 0;
+}
+#planner .boarding-pass .boarding-details span { color: #849195; font-size: 10px; letter-spacing: .08em; }
+#planner .boarding-pass .boarding-details strong { color: #e2e9e8; font-size: 14px; }
+#planner .boarding-pass .boarding-tear-line {
+  position: relative;
+  z-index: 3;
+  grid-column: 1;
+  grid-row: 2;
+  width: 100%;
+  height: 22px;
+  min-height: 22px;
+  background: transparent;
+}
+#planner .boarding-pass .boarding-tear-line::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 20px; right: 20px; bottom: auto;
+  border: 0;
+  border-top: 1px dashed #87929480;
+  transform: translateY(-50%);
+}
+#planner .boarding-pass .boarding-tear-line::after,
+#planner .boarding-pass .boarding-tear-line > .tear-notch::after {
+  content: '';
+  position: absolute;
+  top: 50%; bottom: auto;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: #11191d;
+  transform: translateY(-50%);
+}
+#planner .boarding-pass .boarding-tear-line::after { left: -13px; }
+#planner .boarding-pass .boarding-tear-line > .tear-notch::after { left: auto; right: -13px; }
+#planner .boarding-pass .boarding-tear-line > span:not(.tear-notch)::after { content: none; }
+#planner .boarding-pass .boarding-ticket-stub {
+  position: relative;
+  z-index: 1;
+  grid-column: 1;
+  grid-row: 3;
+  display: grid;
+  grid-template-columns: minmax(0,1fr) 92px;
+  align-items: center;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+  min-height: 108px;
+  padding: 14px 24px;
+  border: 0;
+  border-radius: 0 0 17px 17px;
+  background: #1c2428;
+  color: #e2e8e7;
+}
+#planner .boarding-pass .boarding-barcode {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 54px;
+  margin: 0;
+  background: #e9e4d4;
+  opacity: 1;
+  image-rendering: pixelated;
+}
+#planner .boarding-pass .boarding-qr {
+  display: block;
+  width: 92px;
+  height: 92px;
+  max-width: 100%;
+  border: 0;
+  border-radius: 2px;
+  background: #e9e4d4;
+  image-rendering: pixelated;
+}
+#planner .boarding-pass-checkin {
+  overflow: visible;
+  touch-action: none;
+  user-select: none;
+}
+#planner .boarding-pass-checkin .boarding-ticket-main { border-radius: 17px 17px 0 0; }
+#planner .boarding-pass-checkin .boarding-stub-detachable,
+#planner .boarding-pass-checkin .boarding-stub-detachable:active:not(:disabled) {
+  left: auto;
+  top: auto;
+  height: auto;
+  cursor: grab;
+  touch-action: none;
+  transform: translate3d(var(--tear-x,0px),var(--tear-drop,0px),0) rotate(var(--tear-angle,0deg));
+  transform-origin: 85% 0;
+  opacity: 1;
+  transition: transform 280ms cubic-bezier(.22,.8,.25,1), opacity 220ms ease;
+}
+#planner .boarding-pass-checkin.dragging .boarding-stub-detachable { cursor: grabbing; transition: none; }
+#planner .boarding-pass-checkin.springing .boarding-stub-detachable { transition: transform 350ms cubic-bezier(.2,1.2,.3,1); }
+#planner .boarding-pass-checkin .tear-cut {
+  position: absolute;
+  top: 50%; left: 20px;
+  width: var(--tear-cut,0%);
+  height: 3px;
+  border: 0;
+  background: #11191d;
+  transform: translateY(-50%);
+  pointer-events: none;
+  transition: width 280ms cubic-bezier(.22,.8,.25,1);
+}
+#planner .boarding-pass-checkin.dragging .tear-cut { transition: none; }
+#planner .boarding-pass-checkin .tear-handle {
+  position: absolute;
+  z-index: 5;
+  top: 50%; left: calc(20px + var(--tear-x,0px));
+  display: grid;
+  width: 40px; height: 40px;
+  place-items: center;
+  border: 1px solid #ffffff65;
+  border-radius: 50%;
+  background: #e8ecdf;
+  color: #253033;
+  box-shadow: 0 4px 14px #0005;
+  transform: translateY(-50%);
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+  transition: left 280ms cubic-bezier(.22,.8,.25,1), opacity 180ms ease;
+}
+#planner .boarding-pass-checkin.dragging .tear-handle { cursor: grabbing; transition: none; }
+#planner .boarding-pass-checkin .tear-handle svg {
+  width: 20px; height: 20px;
+  fill: none; stroke: currentColor; stroke-width: 1.8;
+  stroke-linecap: round; stroke-linejoin: round;
+  animation: ticket-tear-hint 2.2s ease-in-out infinite;
+}
+@keyframes ticket-tear-hint {
+  0%, 18%, 70%, 100% { transform: translateX(0); opacity: .8; }
+  38% { transform: translateX(7px); opacity: 1; }
+  52% { transform: translateX(2px); opacity: 1; }
+}
+#planner .boarding-pass-checkin.dragging .tear-handle svg,
+#planner .boarding-pass-checkin.is-torn .tear-handle svg { animation: none; }
+#planner .boarding-pass-checkin.is-torn .tear-handle { opacity: 0; pointer-events: none; }
+#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable,
+#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable:active:not(:disabled) {
+  transform: translate3d(28px,92px,0) rotate(-5deg);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 600ms cubic-bezier(.2,.75,.25,1), opacity 500ms ease;
+}
+#planner .boarding-pass-checkin .boarding-stub-detachable:focus-visible { outline: 2px solid #c2e2e8; outline-offset: 4px; }
+#planner .checkin-instruction { margin: 14px 24px 0; color: #97a4a6; font-size: 11px; text-align: center; }
+@media (max-width:760px) {
+  #planner .boarding-pass { margin: 14px; grid-template-rows: auto 22px 92px; }
+  #planner .boarding-pass .boarding-ticket-main { padding: 19px 16px 16px; }
+  #planner .boarding-pass .boarding-route { gap: 8px; }
+  #planner .boarding-pass .boarding-route strong { font-size: 25px; }
+  #planner .boarding-pass .boarding-flight-time { min-width: 65px; }
+  #planner .boarding-pass .boarding-details { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; }
+  #planner .boarding-pass .boarding-ticket-stub { grid-column: 1; grid-row: 3; grid-template-columns: minmax(0,1fr) 72px; gap: 10px; padding: 10px 14px; }
+  #planner .boarding-pass .boarding-qr { width: 72px; height: 72px; }
+}
+@media (prefers-reduced-motion:reduce) {
+  #planner .boarding-pass-checkin .tear-handle svg { animation: none; }
+  #planner .boarding-pass-checkin .boarding-stub-detachable,
+  #planner .boarding-pass-checkin .tear-cut,
+  #planner .boarding-pass-checkin .tear-handle { transition: none; }
+}

@@ -19,7 +19,11 @@ async function setDuration(page, minutes) {
     (value) => document.querySelector("#duration")?.getAttribute("aria-valuenow") === String(value),
     minutes,
   );
-  await pause(160);
+  await page.waitForFunction(() => document.querySelector("#duration")?.dataset.motion === "idle", null, { timeout: 10000 });
+  await page.waitForFunction((value) => {
+    const ruler = document.querySelector("#duration");
+    return Math.abs(ruler.scrollLeft - (value - 10) / 5 * 24) < 0.5;
+  }, minutes);
 }
 async function setOrigin(page, iata) {
   const opener = (await page.locator("#flight-stage").isVisible()) ? "#flight-origin" : "#home-change-origin";
@@ -52,7 +56,7 @@ async function completePreflight(page, { originIata, duration = 30, taskIndex = 
   assert.equal((await state(page)).activeFlight, null, "flight selection is draft only");
   await page.locator("#choose-flight").click();
   await page.locator("#seat-stage").waitFor({ state: "visible" });
-  assert.equal(await page.locator("[data-seat]").count(), 28);
+  assert.equal(await page.locator("[data-seat]").count(), 88);
   assert.equal(await page.locator("#focus-picker").isVisible(), false);
   await page.locator("[data-seat]").first().click();
   await page.locator("#focus-picker").waitFor({ state: "visible" });
@@ -62,10 +66,13 @@ async function completePreflight(page, { originIata, duration = 30, taskIndex = 
   await page.locator("#boarding-stage").waitFor({ state: "visible" });
   assert.equal((await state(page)).activeFlight, null, "boarding pass is draft only");
   assert.equal(await page.locator("#boarding-seat").innerText(), "01A");
+  assert.match(await page.locator("#boarding-time").innerText(), /^\d{2}:\d{2}$/);
+  assert.match(await page.locator("#boarding-date").innerText(), /^\d{4}\.\d{2}\.\d{2}$/);
+  assert.ok(await page.locator("#boarding-qr").evaluate(el => el.width > 0 && el.height > 0));
+  assert.ok(await page.locator("#boarding-barcode").evaluate(el => el.width > 0 && el.height > 0));
   await page.locator("#next-step").click();
   await page.locator("#checkin-stage").waitFor({ state: "visible" });
   assert.equal((await state(page)).activeFlight, null, "check-in is draft only");
-  await page.locator("#checkin-action").click();
   await page.locator("#checkin-stub").waitFor({ state: "visible" });
   await page.locator("#checkin-stub").press("Enter");
   await page.locator("#airplane-stage").waitFor({ state: "visible" });
@@ -109,6 +116,8 @@ async function completePreflight(page, { originIata, duration = 30, taskIndex = 
     const labels = await page.locator("#flight-carousel .flight-card").evaluateAll((cards) => cards.map((card) => card.getAttribute("aria-label") || ""));
     return labels.map((text) => Number(text.match(/([\d,]+) km/)?.[1].replaceAll(",", "")));
   };
+  await setDuration(page, 10);
+  assert.equal(await page.locator("#duration").getAttribute("aria-valuemin"), "10");
   await setDuration(page, 30);
   let distances = await candidateDistances();
   assert.ok(Math.abs(distances[0] - 375) < 110, JSON.stringify(distances));

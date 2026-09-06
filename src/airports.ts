@@ -1,4 +1,5 @@
 import data from "./data/airports.json";
+import generatedZh from "./data/airports-zh.json";
 import { distance, type Coordinate } from "./geo.ts";
 
 export interface Airport {
@@ -78,6 +79,10 @@ const localizedAirports: Record<string, AirportLocale> = {
   FYJ: { city: "\u629a\u8fdc", name: "\u629a\u8fdc\u4e1c\u6781\u673a\u573a" },
   DDG: { city: "\u4e39\u4e1c", name: "\u4e39\u4e1c\u6d6a\u5934\u56fd\u9645\u673a\u573a" },
   JSJ: { city: "\u5efa\u4e09\u6c5f", name: "\u5efa\u4e09\u6c5f\u6e7f\u5730\u673a\u573a" },
+  JXA: { city: "\u9e21\u897f", name: "\u9e21\u897f\u5174\u51ef\u6e56\u673a\u573a" },
+  YKH: { city: "\u8425\u53e3", name: "\u8425\u53e3\u5170\u65d7\u673a\u573a" },
+  AOG: { city: "\u978d\u5c71", name: "\u978d\u5c71\u817e\u9ccc\u673a\u573a" },
+  NZL: { city: "\u624e\u5170\u5c6f", name: "\u624e\u5170\u5c6f\u6210\u5409\u601d\u6c57\u673a\u573a" },
 
   HND: { city: "\u4e1c\u4eac", name: "\u4e1c\u4eac\u7fbd\u7530\u56fd\u9645\u673a\u573a" },
   NRT: { city: "\u4e1c\u4eac", name: "\u6210\u7530\u56fd\u9645\u673a\u573a" },
@@ -140,6 +145,7 @@ const localizedAirports: Record<string, AirportLocale> = {
   UKB: { city: "\u795e\u6237", name: "\u795e\u6237\u673a\u573a" },
   UEO: { city: "\u4e45\u7c73\u5c9b", name: "\u4e45\u7c73\u5c9b\u673a\u573a" },
   AGJ: { city: "\u7c9f\u56fd", name: "\u7c9f\u56fd\u673a\u573a" },
+  TKN: { city: "\u5fb7\u4e4b\u5c9b", name: "\u5fb7\u4e4b\u5c9b\u673a\u573a" },
 
   ICN: { city: "\u9996\u5c14", name: "\u4ec1\u5ddd\u56fd\u9645\u673a\u573a" },
   GMP: { city: "\u9996\u5c14", name: "\u91d1\u6d66\u56fd\u9645\u673a\u573a" },
@@ -151,6 +157,7 @@ const localizedAirports: Record<string, AirportLocale> = {
   YNY: { city: "\u8944\u9633", name: "\u8944\u9633\u56fd\u9645\u673a\u573a" },
   KUV: { city: "\u7fa4\u5c71", name: "\u7fa4\u5c71\u673a\u573a" },
   MWX: { city: "\u52a1\u5b89", name: "\u52a1\u5b89\u56fd\u9645\u673a\u573a" },
+  RGO: { city: "\u6e05\u6d25", name: "\u6e05\u6d25\u6e14\u90ce\u673a\u573a" },
 
   SIN: { city: "\u65b0\u52a0\u5761", name: "\u65b0\u52a0\u5761\u6a1f\u5b9c\u56fd\u9645\u673a\u573a" },
   BKK: { city: "\u66fc\u8c37", name: "\u7d20\u4e07\u90a3\u666e\u56fd\u9645\u673a\u573a" },
@@ -171,8 +178,29 @@ const localizedAirports: Record<string, AirportLocale> = {
   UBN: { city: "\u4e4c\u5170\u5df4\u6258", name: "\u6210\u5409\u601d\u6c57\u56fd\u9645\u673a\u573a" },
 };
 
+const generatedAirports = generatedZh as Record<string, Partial<AirportLocale>>;
 const regionNames = new Intl.DisplayNames(["zh-CN"], { type: "region" });
-const countryLabel = (country: string) => regionNames.of(country) || country;
+const countryLabel = (country: string) =>
+  regionNames.of(country) || "\u5176\u4ed6\u5730\u533a";
+const localeFor = (a: Airport): Partial<AirportLocale> => {
+  const locale = { ...generatedAirports[a.iata], ...localizedAirports[a.iata] };
+  const chineseOnly = (value?: string) =>
+    value && /[\u3400-\u9fff]/u.test(value) && !/[A-Za-z\uFFFD]/u.test(value)
+      ? value : undefined;
+  return { city: chineseOnly(locale.city), name: chineseOnly(locale.name) };
+};
+const compactChinesePlace = (value: string) => {
+  const text = value.trim();
+  return text.length > 2 && text.endsWith("\u5e02") ? text.slice(0, -1) : text;
+};
+const cityFromAirportName = (value: string) =>
+  compactChinesePlace(
+    value
+      .replace(/\u56fd\u9645\u673a\u573a$/u, "")
+      .replace(/\u673a\u573a$/u, "")
+      .replace(/\u98de\u884c\u573a$/u, "")
+      .trim(),
+  );
 
 export const airports: Airport[] = data;
 export const airport = (iata: string | null) =>
@@ -184,51 +212,34 @@ export const coordinates = (a: Airport): Coordinate => [
 
 export const focusDistanceKm = (durationMinutes: number) => durationMinutes * 12.5;
 
-export const airportCityLabel = (a: Airport) =>
-  localizedAirports[a.iata]?.city ||
-  `${countryLabel(a.country)} \u00b7 ${a.city.trim() || a.name.trim()}`;
+// Visible airport labels are Chinese-only. Canonical English data remains searchable,
+// but it never leaks into planning, map labels, boarding passes, or history surfaces.
+export const airportCityLabel = (a: Airport) => {
+  const locale = localeFor(a);
+  if (locale.city) return compactChinesePlace(locale.city);
+  if (locale.name) return cityFromAirportName(locale.name);
+  return `${countryLabel(a.country)}\u5730\u533a`;
+};
 
-// Planning surfaces stay compact even when the local Chinese display table does
-// not yet contain an airport. Never combine a translated country with a long
-// English airport name in the carousel or boarding pass.
-export const airportPlanningLabel = (a: Airport) =>
-  localizedAirports[a.iata]?.city ||
-  (a.city.trim() || a.name.trim())
-    .split(/[(/,]/, 1)[0]
-    .trim() ||
-  a.iata;
+export const airportPlanningLabel = (a: Airport) => airportCityLabel(a);
 
 export const airportNameLabel = (a: Airport) => {
-  const localized = localizedAirports[a.iata]?.name;
-  if (localized) return localized;
-  const original = a.name.trim();
-  const compact = original
-    .split(" / ")[0]
-    .replace(/\s*\([^)]*\)\s*/g, " ")
-    .trim();
-  const localizedSuffix = compact
-    .replace(/International Airport$/i, "\u56fd\u9645\u673a\u573a")
-    .replace(/Regional Airport$/i, "\u5730\u533a\u673a\u573a")
-    .replace(/Municipal Airport$/i, "\u5e02\u7acb\u673a\u573a")
-    .replace(/Airport$/i, "\u673a\u573a")
-    .replace(/Airfield$/i, "\u673a\u573a");
-  if (localizedSuffix.length <= 28) return localizedSuffix;
-  return `${a.city.trim() || a.iata} \u673a\u573a`;
+  const locale = localeFor(a);
+  if (locale.name) return locale.name;
+  if (locale.city) return `${compactChinesePlace(locale.city)}\u673a\u573a`;
+  return `${countryLabel(a.country)}\u673a\u573a \u00b7 ${a.iata}`;
 };
 
 export const airportCompactLabel = (a: Airport) => {
-  const localized = localizedAirports[a.iata];
-  if (!localized) return airportCityLabel(a);
-  if (localized.name === `${localized.city}\u673a\u573a`) return localized.name;
-  if (localized.name.startsWith(localized.city))
-    return `${localized.city} \u00b7 ${localized.name.slice(localized.city.length)}`;
-  return `${localized.city} \u00b7 ${localized.name}`;
+  const city = airportCityLabel(a);
+  const name = airportNameLabel(a);
+  if (name === `${city}\u673a\u573a`) return name;
+  if (name.startsWith(city)) return `${city} \u00b7 ${name.slice(city.length)}`;
+  return `${city} \u00b7 ${name}`;
 };
 
 export const airportSecondaryLabel = (a: Airport) =>
-  localizedAirports[a.iata]
-    ? `${a.city.trim() || a.name.trim()} \u00b7 ${a.name.trim()}`
-    : `${a.city.trim() || a.name.trim()} \u00b7 ${a.country}`;
+  `${airportNameLabel(a)} \u00b7 ${countryLabel(a.country)}`;
 
 export function reachable(
   origin: Airport,
