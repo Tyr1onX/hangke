@@ -7,6 +7,8 @@ import {
   cancel,
   decode,
   progress,
+  pause,
+  resume,
 } from "../src/state.ts";
 const flight = {
   id: "test",
@@ -17,11 +19,54 @@ const flight = {
   startedAt: 1000,
   endsAt: 601000,
   distanceKm: 8300,
+  pausedAt: null,
 };
 test("elapsed wall time drives recovery and is clamped", () => {
   assert.equal(progress(flight, 301000), 0.5);
   assert.equal(progress(flight, 999999), 1);
   assert.equal(progress(flight, -10), 0);
+});
+test("pause freezes progress and resume preserves effective duration", () => {
+  const active = { ...emptyState(), activeFlight: flight };
+  const paused = pause(active, 301000);
+  assert.equal(paused.activeFlight?.pausedAt, 301000);
+  assert.equal(progress(paused.activeFlight!, 501000), 0.5);
+  assert.equal(finalize(paused, 999999), paused);
+
+  const resumed = resume(paused, 501000);
+  assert.equal(resumed.activeFlight?.pausedAt, null);
+  assert.equal(resumed.activeFlight?.startedAt, 1000);
+  assert.equal(resumed.activeFlight?.endsAt, 801000);
+  assert.equal(progress(resumed.activeFlight!, 501000), 0.5);
+  assert.equal(finalize(resumed, 800999), resumed);
+  const landed = finalize(resumed, 801000);
+  assert.equal(landed.flights.length, 1);
+  assert.equal(landed.flights[0].startedAt, 1000);
+  assert.equal(landed.flights[0].completedAt, 801000);
+  assert.equal("pausedAt" in landed.flights[0], false);
+  assert.equal(decode(JSON.stringify(landed)).flights.length, 1);
+});
+
+test("multiple pauses accumulate in endsAt without changing the original start", () => {
+  let state = { ...emptyState(), activeFlight: flight };
+  state = pause(state, 121000);
+  state = resume(state, 181000);
+  state = pause(state, 361000);
+  state = resume(state, 451000);
+  assert.equal(state.activeFlight?.startedAt, 1000);
+  assert.equal(state.activeFlight?.endsAt, 751000);
+  assert.equal(progress(state.activeFlight!, 451000), 0.5);
+});
+
+test("paused state survives decode and legacy active flights default to running", () => {
+  const paused = pause({ ...emptyState(), activeFlight: flight }, 301000);
+  const restored = decode(JSON.stringify(paused));
+  assert.equal(restored.activeFlight?.pausedAt, 301000);
+  assert.equal(progress(restored.activeFlight!, 999999), 0.5);
+
+  const legacy = JSON.parse(JSON.stringify({ ...emptyState(), activeFlight: flight }));
+  delete legacy.activeFlight.pausedAt;
+  assert.equal(decode(JSON.stringify(legacy)).activeFlight?.pausedAt, null);
 });
 test("expired flight lands exactly once, including after reload", () => {
   const active = { ...emptyState(), activeFlight: flight };

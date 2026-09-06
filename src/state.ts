@@ -7,8 +7,9 @@ export interface ActiveFlight {
   startedAt: number;
   endsAt: number;
   distanceKm: number;
+  pausedAt: number | null;
 }
-export type CompletedFlight = Omit<ActiveFlight, "endsAt"> & {
+export type CompletedFlight = Omit<ActiveFlight, "endsAt" | "pausedAt"> & {
   completedAt: number;
 };
 export interface AppState {
@@ -54,7 +55,8 @@ export function decode(raw: string | null): AppState {
       !s.flights.every(
         (f: any) =>
           validFlight(f) &&
-          f.completedAt === f.startedAt + f.durationSeconds * 1000,
+          Number.isFinite(f.completedAt) &&
+          f.completedAt >= f.startedAt + f.durationSeconds * 1000,
       )
     )
       return emptyState();
@@ -62,8 +64,13 @@ export function decode(raw: string | null): AppState {
       s.activeFlight !== null &&
       !(
         validFlight(s.activeFlight) &&
-        s.activeFlight.endsAt ===
-          s.activeFlight.startedAt + s.activeFlight.durationSeconds * 1000
+        Number.isFinite(s.activeFlight.endsAt) &&
+        s.activeFlight.endsAt >=
+          s.activeFlight.startedAt + s.activeFlight.durationSeconds * 1000 &&
+        (s.activeFlight.pausedAt == null ||
+          (Number.isFinite(s.activeFlight.pausedAt) &&
+            s.activeFlight.pausedAt >= s.activeFlight.startedAt &&
+            s.activeFlight.pausedAt < s.activeFlight.endsAt))
       )
     )
       return emptyState();
@@ -72,15 +79,17 @@ export function decode(raw: string | null): AppState {
       s.flights.length
     )
       return emptyState();
-    return s;
+    return s.activeFlight && s.activeFlight.pausedAt === undefined
+      ? { ...s, activeFlight: { ...s.activeFlight, pausedAt: null } }
+      : s;
   } catch {
     return emptyState();
   }
 }
 export function finalize(s: AppState, now: number): AppState {
   const f = s.activeFlight;
-  if (!f || now < f.endsAt) return s;
-  const { endsAt, ...fields } = f;
+  if (!f || (f.pausedAt ?? now) < f.endsAt) return s;
+  const { endsAt, pausedAt: _pausedAt, ...fields } = f;
   return {
     activeFlight: null,
     lastAirportIata: f.destinationIata,
@@ -90,5 +99,29 @@ export function finalize(s: AppState, now: number): AppState {
   };
 }
 export const cancel = (s: AppState): AppState => ({ ...s, activeFlight: null });
-export const progress = (f: ActiveFlight, now: number) =>
-  Math.max(0, Math.min(1, (now - f.startedAt) / (f.endsAt - f.startedAt)));
+export const pause = (s: AppState, now: number): AppState => {
+  const f = s.activeFlight;
+  if (!f || f.pausedAt !== null || now >= f.endsAt) return s;
+  return { ...s, activeFlight: { ...f, pausedAt: now } };
+};
+export const resume = (s: AppState, now: number): AppState => {
+  const f = s.activeFlight;
+  if (!f || f.pausedAt === null) return s;
+  const pausedFor = Math.max(0, now - f.pausedAt);
+  return {
+    ...s,
+    activeFlight: {
+      ...f,
+      endsAt: f.endsAt + pausedFor,
+      pausedAt: null,
+    },
+  };
+};
+export const progress = (f: ActiveFlight, now: number) => {
+  const durationMs = f.durationSeconds * 1000;
+  const pausedMs = Math.max(0, f.endsAt - f.startedAt - durationMs);
+  return Math.max(
+    0,
+    Math.min(1, ((f.pausedAt ?? now) - f.startedAt - pausedMs) / durationMs),
+  );
+};

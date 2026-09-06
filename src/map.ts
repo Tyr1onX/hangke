@@ -94,6 +94,8 @@ export class FlightMap {
       center: [0, 15],
       zoom: 1.2 + Math.log2(window.innerHeight / 800),
       attributionControl: { compact: false },
+      maxTileCacheSize: 512,
+      maxTileCacheZoomLevels: 12,
     });
     this.map.dragRotate.disable();
     this.map.touchZoomRotate.disableRotation();
@@ -368,6 +370,7 @@ export class FlightMap {
         right: this.reserveRight ? 350 : 56,
       },
       duration,
+      linear: true,
     });
   }
   fly(a: Airport, b: Airport, t: number) {

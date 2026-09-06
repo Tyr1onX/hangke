@@ -131,11 +131,15 @@ const fs = require("node:fs");
   await page.locator("#destination-results [role=option]").first().click();
   await page.locator("#task").fill("取消测试");
   await page.locator("#takeoff").click();
-  await page.locator("#cancel").click();
-  await page.locator("#continue").click();
+  const cancelBox = await page.locator("#cancel").boundingBox();
+  await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(350);
+  await page.mouse.up();
   assert.equal(await page.locator("#flight").isVisible(), true);
-  await page.locator("#cancel").click();
-  await page.locator("#end").click();
+  await page.mouse.down();
+  await page.waitForTimeout(1300);
+  await page.mouse.up();
   state = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("hangke.v1")),
   );
@@ -158,7 +162,7 @@ const fs = require("node:fs");
       {
         desktop,
         checks:
-          "planner/duration-candidates/route/timer/reload/expired landing/idempotence/history/cancel/resize",
+          "planner/duration-candidates/route/timer/reload/expired landing/idempotence/history/hold-cancel/resize",
         tileResponses: tiles.length,
         workers: [...new Set(workers)],
         errors,

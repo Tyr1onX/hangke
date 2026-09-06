@@ -15,6 +15,8 @@ import {
   emptyState,
   finalize,
   cancel,
+  pause as pauseFlight,
+  resume as resumeFlight,
   progress,
   type AppState,
   type CompletedFlight,
@@ -22,15 +24,14 @@ import {
 
 export function start() {
   const root = document.querySelector<HTMLDivElement>("#app")!;
-  root.innerHTML = `<header><span class="brand">航刻</span><button id="history-toggle">航迹</button></header>
+  root.innerHTML = `<header><span id="brand" class="brand">航刻</span><button id="history-toggle">航迹</button></header>
     <div id="notice" role="alert" hidden></div><div id="map-error" role="alert" hidden>地图加载失败 <button id="retry">重试</button></div>
     <form id="planner" autocomplete="off"><div class="airport-field"><label for="origin">出发机场</label><input id="origin" placeholder="机场 / 城市" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="origin-results"><div id="origin-results" class="results" role="listbox" hidden></div></div>
     <label class="duration">专注时长<select id="duration" aria-label="专注时长"></select></label><span class="arrow" aria-hidden="true">→</span><div class="airport-field"><label for="destination">可达目的地</label><input id="destination" placeholder="先选择出发机场和时长" readonly role="combobox" aria-expanded="false" aria-controls="destination-results"><div id="destination-results" class="results" role="listbox" hidden></div></div>
     <label class="task-field">当前任务<input id="task" placeholder="准备专注什么？" maxlength="200"></label><button id="takeoff" class="primary" disabled>起飞</button><output id="distance"></output></form>
-    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="quiet" type="button">跟随飞机</button><button id="route-view" class="quiet" type="button">查看航线</button></div><div class="focus"><div id="timer" role="timer"></div><p id="flight-task"></p><button id="cancel" class="quiet">结束航程</button></div></section>
+    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
     <section id="landing" class="result" hidden aria-label="航程完成"><p id="landing-route"></p><h1>航程完成</h1><p id="landing-metrics"></p><p id="landing-task"></p><button id="done" class="primary">完成</button></section>
-    <aside id="history" hidden aria-label="航迹"><h1>航迹</h1><div id="history-list"></div><div id="details" hidden></div></aside>
-    <dialog id="confirm"><p>结束本次航程？本次航程不会保存。</p><div class="dialog-actions"><button id="continue" autofocus>继续飞行</button><button id="end">结束航程</button></div></dialog>`;
+    <aside id="history" hidden aria-label="航迹"><h1>航迹</h1><div id="history-list"></div><div id="details" hidden></div></aside>`;
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T;
   const show = (id: string, visible: boolean) => {
@@ -64,11 +65,18 @@ export function start() {
   const syncFlightViewButtons = (view: FlightView) => {
     const follow = el<HTMLButtonElement>("follow-plane"),
       route = el<HTMLButtonElement>("route-view");
-    follow.textContent = view === "manual" ? "回到飞机" : "跟随飞机";
     follow.disabled = view === "focus";
     route.disabled = view === "route";
+    follow.setAttribute("aria-label", view === "manual" ? "回到飞机" : "跟随飞机");
     follow.setAttribute("aria-pressed", String(view === "focus"));
     route.setAttribute("aria-pressed", String(view === "route"));
+  };
+  const syncPauseButton = (paused: boolean) => {
+    const button = el<HTMLButtonElement>("pause-flight");
+    const label = paused ? "继续飞行" : "暂停飞行";
+    button.setAttribute("aria-pressed", String(paused));
+    button.setAttribute("aria-label", label);
+    button.dataset.tooltip = label;
   };
   let map: FlightMap | undefined;
   try {
@@ -278,7 +286,7 @@ export function start() {
   const animatePlane = () => {
     animationFrame = null;
     const f = state.activeFlight;
-    if (!f || !map) return;
+    if (!f || f.pausedAt !== null || !map) return;
     // Frames only trigger drawing; elapsed wall time is always authoritative.
     const now = Date.now();
     const a = airport(f.originIata),
@@ -290,12 +298,14 @@ export function start() {
     if (
       animationFrame === null &&
       state.activeFlight &&
+      state.activeFlight.pausedAt === null &&
       Date.now() < state.activeFlight.endsAt
     ) {
       animationFrame = requestAnimationFrame(animatePlane);
     }
   };
   const render = () => {
+    show("brand", !state.activeFlight);
     show("planner", !state.activeFlight && !landed && !historyMode);
     show("flight", !!state.activeFlight);
     show("landing", !!landed);
@@ -307,11 +317,12 @@ export function start() {
       const f = state.activeFlight;
       el("flight-route").textContent = `${f.originIata} → ${f.destinationIata}`;
       el("flight-task").textContent = f.task;
+      syncPauseButton(f.pausedAt !== null);
       const a = airport(f.originIata),
         b = airport(f.destinationIata);
       map?.select(a, b);
       if (a && b && map) {
-        map.fly(a, b, progress(f, Date.now()));
+        map.fly(a, b, progress(f, f.pausedAt ?? Date.now()));
         map.focusPlane();
       }
       startPlaneAnimation();
@@ -335,23 +346,26 @@ export function start() {
     const f = state.activeFlight;
     if (!f) return;
     const now = Date.now();
-    if (now >= f.endsAt) {
+    const clock = f.pausedAt ?? now;
+    if (clock >= f.endsAt) {
       const next = finalize(state, now);
-      if (commit(next)) {
+      if (next !== state && commit(next)) {
         landed = next.flights.find((x) => x.id === f.id);
         origin = airport(next.lastAirportIata);
         destination = undefined;
         setInput("origin", origin);
         setInput("destination");
-        el<HTMLDialogElement>("confirm").close();
         render();
       }
       return;
     }
-    const seconds = Math.ceil((f.endsAt - now) / 1000);
+    const seconds = Math.ceil((f.endsAt - clock) / 1000);
     el("timer").textContent = `${Math.floor(seconds / 60)
       .toString()
       .padStart(2, "0")}:${(seconds % 60).toString().padStart(2, "0")}`;
+    el("remaining-distance").textContent =
+      `剩余 ${Math.round(f.distanceKm * (1 - progress(f, now))).toLocaleString()} km`;
+    syncPauseButton(f.pausedAt !== null);
   };
   el<HTMLFormElement>("planner").onsubmit = (e) => {
     e.preventDefault();
@@ -372,6 +386,7 @@ export function start() {
           startedAt,
           endsAt: startedAt + durationSeconds * 1000,
           distanceKm: distance(coordinates(origin), coordinates(destination)),
+          pausedAt: null,
         },
       })
     ) {
@@ -380,18 +395,68 @@ export function start() {
       el("cancel").focus();
     }
   };
-  el("cancel").onclick = () => el<HTMLDialogElement>("confirm").showModal();
-  el("continue").onclick = () => el<HTMLDialogElement>("confirm").close();
-  el("end").onclick = () => {
+  el("pause-flight").onclick = () => {
+    tick();
+    const f = state.activeFlight;
+    if (!f) return;
+    const now = Date.now();
+    const next = f.pausedAt === null ? pauseFlight(state, now) : resumeFlight(state, now);
+    if (next === state || !commit(next)) return;
+    if (next.activeFlight?.pausedAt !== null) {
+      stopPlaneAnimation();
+      const paused = next.activeFlight;
+      const a = paused && airport(paused.originIata),
+        b = paused && airport(paused.destinationIata);
+      if (paused && a && b && map)
+        map.fly(a, b, progress(paused, paused.pausedAt ?? now));
+    } else {
+      startPlaneAnimation();
+    }
+    tick();
+  };
+
+  const endButton = el<HTMLButtonElement>("cancel");
+  let endHoldTimer: number | undefined;
+  const clearEndHold = () => {
+    if (endHoldTimer !== undefined) window.clearTimeout(endHoldTimer);
+    endHoldTimer = undefined;
+    endButton.classList.remove("holding");
+  };
+  const finishHeldEnd = () => {
+    clearEndHold();
     tick();
     if (!state.activeFlight) return;
     if (commit(cancel(state))) {
-      el<HTMLDialogElement>("confirm").close();
+      stopPlaneAnimation();
       render();
       map?.select(origin, destination);
       el("origin").focus();
     }
   };
+  const beginEndHold = () => {
+    if (endHoldTimer !== undefined || !state.activeFlight) return;
+    endButton.classList.add("holding");
+    endHoldTimer = window.setTimeout(finishHeldEnd, 1200);
+  };
+  endButton.onpointerdown = (e) => {
+    if (!e.isPrimary || e.button !== 0) return;
+    e.preventDefault();
+    endButton.setPointerCapture(e.pointerId);
+    beginEndHold();
+  };
+  endButton.onpointerup = clearEndHold;
+  endButton.onpointercancel = clearEndHold;
+  endButton.onlostpointercapture = clearEndHold;
+  endButton.onkeydown = (e) => {
+    if ((e.key === " " || e.key === "Enter") && !e.repeat) {
+      e.preventDefault();
+      beginEndHold();
+    }
+  };
+  endButton.onkeyup = (e) => {
+    if (e.key === " " || e.key === "Enter") clearEndHold();
+  };
+  endButton.onclick = (e) => e.preventDefault();
   el("done").onclick = () => {
     landed = undefined;
     el<HTMLInputElement>("task").value = "";

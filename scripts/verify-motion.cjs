@@ -144,10 +144,13 @@ async function assertStopped(page) {
   assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')).activeFlight),initial);
   result.reopened=await sample(page,3000);
   assert.ok(result.reopened.updatesPerSecond > 20);
-  await page.locator('#cancel').click();await page.locator('#continue').click();
+  const cancelBox=await page.locator('#cancel').boundingBox();
+  await page.mouse.move(cancelBox.x+cancelBox.width/2,cancelBox.y+cancelBox.height/2);
+  await page.mouse.down();await pause(300);await page.mouse.up();
+  assert.equal(await page.locator('#flight').isVisible(),true);
   await page.evaluate(()=>{for(let i=0;i<10;i++)window.dispatchEvent(new Event('focus'));});
   assert.equal((await pose(page)).probe.maxPending,1);
-  await page.locator('#cancel').click();await page.locator('#end').click();
+  await page.mouse.down();await pause(1300);await page.mouse.up();
   result.cancel=await assertStopped(page);
   let state=await page.evaluate(()=>JSON.parse(localStorage.getItem('hangke.v1')));
   assert.equal(state.flights.length,0);assert.equal(state.lastAirportIata,null);
