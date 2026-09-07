@@ -32,6 +32,8 @@ async function createFlight(page) {
   await page.locator("#confirm-seat").click();
   await page.locator("#next-step").click();
   await page.locator("#checkin-stub").press("Enter");
+  await page.locator("#checkin-continue").waitFor({ state: "visible" });
+  await page.locator("#checkin-continue").click();
   await page.locator("#airplane-stage").waitFor({ state: "visible" });
   await page.locator("#boarding-action").click();
   await page.locator("#ready-stage").waitFor({ state: "visible" });

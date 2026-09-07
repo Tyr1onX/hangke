@@ -1635,10 +1635,10 @@ header {
   color: #c6d1d3;
 }
 .seat-row button[aria-pressed="true"] {
-  border-color: #f0c94b;
-  background: #f0c94b;
-  color: #242017;
-  box-shadow: 0 3px 12px #f0c94b33;
+  border-color: #5c8ebb;
+  background: #406f9b;
+  color: #fff;
+  box-shadow: 0 3px 12px #406f9b33;
 }
 .seat-placeholder {
   border: 1px dashed #ffffff08;
@@ -1784,8 +1784,8 @@ header {
   }
   .seat-row button:hover:not(:disabled),
   .focus-picker .task-options button:hover:not(:disabled) {
-    border-color: #f0c94b5c;
-    color: #f0c94b;
+    border-color: #70a7d580;
+    color: #dceaf5;
   }
 }
 @media (max-width: 820px) {
@@ -2181,9 +2181,9 @@ header {
   color: #b7c2c4;
 }
 .seat-row button[aria-pressed="true"] {
-  border-color: #f0c94b;
-  background: #f0c94b;
-  color: #242017;
+  border-color: #5c8ebb;
+  background: #406f9b;
+  color: #fff;
 }
 .seat-row button[data-focus] {
   position: relative;
@@ -2205,6 +2205,16 @@ header {
 .seat-row button[data-focus-key="read"] { background: #4f7b5e; border-color: #6c9b7b; }
 .seat-row button[data-focus-key="write"] { background: #9a6742; border-color: #bc8255; }
 .seat-row button[data-focus-key="tasks"] { background: #39777b; border-color: #55999d; }
+
+/* A pending seat is blue; a confirmed seat retains its focus-type color. */
+.seat-row button[aria-pressed="true"][data-focus-key="learn"] { background: #406f9b; border-color: #5c8ebb; color: #fff; }
+.seat-row button[aria-pressed="true"][data-focus-key="code"] { background: #6d5898; border-color: #8b73b9; color: #fff; }
+.seat-row button[aria-pressed="true"][data-focus-key="read"] { background: #4f7b5e; border-color: #6c9b7b; color: #fff; }
+.seat-row button[aria-pressed="true"][data-focus-key="write"] { background: #9a6742; border-color: #bc8255; color: #fff; }
+.seat-row button[aria-pressed="true"][data-focus-key="tasks"] { background: #39777b; border-color: #55999d; color: #fff; }
+@media (hover: hover) {
+  .seat-row button[aria-pressed="true"]:hover:not(:disabled) { color: #fff; }
+}
 
 .focus-picker {
   position: absolute;

@@ -76,8 +76,9 @@ export function start() {
             <div class="seat-columns" aria-hidden="true"><span>A</span><span>C</span><i></i><span>D</span><span>F</span></div>
             <div id="seat-grid" class="seat-grid"></div>
           </div>
-          <div id="focus-picker" class="focus-picker" aria-labelledby="focus-picker-label" hidden>
-            <span class="focus-seat-label" id="focus-seat-label"></span>
+          <dialog id="focus-picker" class="focus-picker" aria-labelledby="focus-picker-label" aria-describedby="focus-seat-label" hidden>
+            <button id="focus-picker-close" class="focus-picker-close" type="button" aria-label="关闭专注类型选择">×</button>
+             <span class="focus-seat-label" id="focus-seat-label"></span>
             <h2 id="focus-picker-label">选择专注类型</h2>
             <div class="task-options" role="group" aria-label="选择专注类型">
               <button class="focus-option" type="button" data-task="学习" data-task-key="learn" aria-pressed="false"><span class="focus-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5c3.4-.8 5.8-.3 8 1.4v12c-2.2-1.7-4.6-2.2-8-1.4Z"></path><path d="M20 5.5c-3.4-.8-5.8-.3-8 1.4v12c2.2-1.7 4.6-2.2 8-1.4Z"></path></svg></span><span>学习</span></button>
@@ -86,7 +87,7 @@ export function start() {
               <button class="focus-option" type="button" data-task="写作" data-task-key="write" aria-pressed="false"><span class="focus-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 5.5 4 4M5 19l3.8-.8L19 8a2.1 2.1 0 0 0-3-3L5.8 15.2Z"></path><path d="M13 6.5 17.5 11"></path></svg></span><span>写作</span></button>
               <button class="focus-option" type="button" data-task="事务" data-task-key="tasks" aria-pressed="false"><span class="focus-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="7" width="17" height="12.5" rx="2"></rect><path d="M9 7V4.5h6V7M3.5 11.5h17M9.5 11.5v2h5v-2"></path></svg></span><span>事务</span></button>
             </div>
-          </div>
+          </dialog>
         </div>
         <div class="stage-action-row seat-action-row"><span id="seat-summary" class="draft-distance"></span><button id="confirm-seat" class="primary" type="button" hidden>确认座位</button></div>
       </section>
@@ -97,7 +98,7 @@ export function start() {
           <h1 id="boarding-stage-title">\u767b\u673a\u724c</h1>
           <div id="boarding-route-label" class="draft-route-label"></div>
         </div>
-        <article class="boarding-pass" aria-label="\u767b\u673a\u724c">
+        <div id="boarding-ticket-viewport" class="ticket-viewport"><div id="boarding-ticket-frame" class="ticket-fit"><article id="boarding-ticket" class="boarding-pass" aria-label="\u767b\u673a\u724c">
           <div class="ticket-world-map" aria-hidden="true"></div>
           <div class="boarding-ticket-main"><span class="ticket-brand">HANGKE / FOCUS FLIGHT</span>
             <div class="boarding-route"><div><strong id="boarding-origin-code">---</strong><span id="boarding-origin-city">---</span></div><div class="boarding-flight-time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 6-2 4-7 2 1-2 7 5 3c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-5-2-3 4-1.5-.5 1-5-5-1.5Z"></path></svg><strong id="boarding-duration">--</strong></div><div><strong id="boarding-destination-code">---</strong><span id="boarding-destination-city">---</span></div></div>
@@ -105,7 +106,7 @@ export function start() {
           </div>
           <div class="boarding-tear-line" aria-hidden="true"><span></span></div>
           <div class="boarding-ticket-stub"><canvas id="boarding-barcode" class="boarding-barcode" aria-label="Code 128 barcode"></canvas><canvas id="boarding-qr" class="boarding-qr" width="84" height="84" aria-label="QR code for this local focus session"></canvas></div>
-        </article>
+        </article></div></div>
         <div class="boarding-action"><button id="next-step" class="primary" type="button">\u503c\u673a</button></div>
       </section>
 
@@ -116,7 +117,7 @@ export function start() {
           <div id="checkin-route" class="draft-route-label"></div>
         </div>
         <p id="checkin-instruction" class="checkin-instruction">\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u7968\u6839</p>
-        <article id="checkin-ticket" class="boarding-pass boarding-pass-checkin" aria-label="\u53ef\u6495\u5f00\u7684\u767b\u673a\u724c">
+        <div id="checkin-ticket-viewport" class="ticket-viewport"><div id="checkin-ticket-frame" class="ticket-fit"><article id="checkin-ticket" class="boarding-pass boarding-pass-checkin" aria-label="\u53ef\u6495\u5f00\u7684\u767b\u673a\u724c">
           <div class="ticket-world-map" aria-hidden="true"></div>
           <div class="boarding-ticket-main"><span class="ticket-brand">HANGKE / FOCUS FLIGHT</span>
             <div class="boarding-route"><div><strong id="checkin-origin-code">---</strong><span id="checkin-origin-city">---</span></div><div class="boarding-flight-time"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 13 6-2 4-7 2 1-2 7 5 3c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-5-2-3 4-1.5-.5 1-5-5-1.5Z"></path></svg><strong id="checkin-duration">--</strong></div><div><strong id="checkin-destination-code">---</strong><span id="checkin-destination-city">---</span></div></div>
@@ -124,7 +125,8 @@ export function start() {
           </div>
           <div class="boarding-tear-line" aria-hidden="true"><span class="tear-notch"></span><span class="tear-cut"></span><span id="checkin-tear-handle" class="tear-handle"><svg viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></svg></span></div>
           <button id="checkin-stub" class="boarding-ticket-stub boarding-stub-detachable" type="button" aria-label="\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u767b\u673a\u8054"><canvas id="checkin-barcode" class="boarding-barcode" aria-label="Code 128 barcode"></canvas><canvas id="checkin-qr" class="boarding-qr" width="84" height="84" aria-label="QR code for this local focus session"></canvas></button>
-        </article>
+        </article></div></div>
+              <div class="boarding-action checkin-actions"><button id="checkin-continue" class="primary" type="button" hidden>继续登机</button></div>
       </section>
 
       <section id="airplane-stage" class="preflight-stage airplane-stage" aria-labelledby="airplane-title" hidden>
@@ -235,7 +237,6 @@ export function start() {
   let checkinStarted = false;
   let checkinCompleted = false;
   let checkinProgress = 0;
-  let checkinCompletionId = 0;
   let pendingOrigin: Airport | undefined;
   let durationMinutes = 60;
   let selectedSeat = "";
@@ -619,32 +620,37 @@ export function start() {
     seatGrid.append(seatRow);
   }
 
+  const focusPicker = el<HTMLDialogElement>("focus-picker");
+  let focusReturn: HTMLButtonElement | undefined;
+  const closeFocusPicker = (restoreFocus = true) => {
+    focusPicker.classList.remove("is-visible");
+    if (focusPicker.open) focusPicker.close();
+    focusPicker.hidden = true;
+    if (restoreFocus && preflightStage === "seat")
+      focusReturn?.focus({ preventScroll: true });
+  };
+  const openFocusPicker = (seat: HTMLButtonElement) => {
+    if (preflightStage !== "seat") return;
+    focusReturn = seat;
+    focusPicker.hidden = false;
+    if (!focusPicker.open) focusPicker.showModal();
+    requestAnimationFrame(() => focusPicker.classList.add("is-visible"));
+    taskButtons[0]?.focus({ preventScroll: true });
+  };
+  el<HTMLButtonElement>("focus-picker-close").onclick = () => closeFocusPicker();
+  focusPicker.oncancel = (event) => {
+    event.preventDefault();
+    closeFocusPicker();
+  };
   const taskButtons = Array.from(
     document.querySelectorAll<HTMLButtonElement>("[data-task]"),
   );
   for (const button of taskButtons)
     button.onclick = () => {
+      if (!selectedSeat || preflightStage !== "seat") return;
       selectedTask = button.dataset.task || "";
-      for (const item of taskButtons)
-        item.setAttribute(
-          "aria-pressed",
-          String(item.dataset.task === selectedTask),
-        );
-      for (const seat of seatButtons) {
-        seat.removeAttribute("data-focus");
-        seat.removeAttribute("data-focus-key");
-      }
-      if (selectedSeat && selectedTask)
-        seatButtons
-          .find((seat) => seat.dataset.seat === selectedSeat)
-          ?.setAttribute("data-focus", selectedTask);
-      seatButtons
-        .find((seat) => seat.dataset.seat === selectedSeat)
-        ?.setAttribute(
-          "data-focus-key",
-          taskButtons.find((item) => item.dataset.task === selectedTask)?.dataset.taskKey || "",
-        );
-      refreshPlanner();
+      renderPreflight();
+      closeFocusPicker();
     };
   const seatButtons = Array.from(
     document.querySelectorAll<HTMLButtonElement>("[data-seat]"),
@@ -654,19 +660,44 @@ export function start() {
       const nextSeat = button.dataset.seat || "";
       if (selectedSeat !== nextSeat) selectedTask = "";
       selectedSeat = nextSeat;
-      for (const item of seatButtons)
-        item.setAttribute(
-          "aria-pressed",
-          String(item.dataset.seat === selectedSeat),
-        );
-      for (const item of taskButtons) item.setAttribute("aria-pressed", "false");
-      const focusPicker = el("focus-picker");
-      focusPicker.hidden = false;
-      focusPicker.classList.remove("is-visible");
-      requestAnimationFrame(() => focusPicker.classList.add("is-visible"));
-      refreshPlanner();
-      taskButtons[0]?.focus();
+      renderPreflight();
+      openFocusPicker(button);
     };
+
+  const ticketLayouts = ["boarding", "checkin"].map((name) => ({
+    viewport: el<HTMLElement>(`${name}-ticket-viewport`),
+    frame: el<HTMLElement>(`${name}-ticket-frame`),
+    ticket: el<HTMLElement>(name === "boarding" ? "boarding-ticket" : "checkin-ticket"),
+  }));
+  let ticketFitFrame: number | null = null;
+  const fitTickets = () => {
+    for (const { viewport, frame, ticket } of ticketLayouts) {
+      const availableWidth = viewport.clientWidth;
+      const availableHeight = viewport.clientHeight;
+      if (availableWidth <= 0 || availableHeight <= 0) continue;
+      const naturalWidth = Math.max(560, Math.min(820, availableWidth - 4));
+      frame.style.width = `${naturalWidth}px`;
+      const naturalHeight = ticket.offsetHeight;
+      if (!naturalHeight) continue;
+      frame.style.height = `${naturalHeight}px`;
+      const scale = Math.min(1,
+        (availableWidth - 4) / (naturalWidth + 64),
+        (availableHeight - 4) / (naturalHeight + 96));
+      frame.style.setProperty("--ticket-scale", String(Math.max(0.1, scale)));
+    }
+  };
+  const scheduleTicketFit = () => {
+    if (ticketFitFrame !== null) return;
+    ticketFitFrame = requestAnimationFrame(() => {
+      ticketFitFrame = null;
+      fitTickets();
+    });
+  };
+  const ticketResizeObserver = new ResizeObserver(scheduleTicketFit);
+  for (const { viewport, ticket } of ticketLayouts) {
+    ticketResizeObserver.observe(viewport);
+    ticketResizeObserver.observe(ticket);
+  }
 
   const renderPreflight = () => {
     el("planner").dataset.stage = preflightStage;
@@ -688,23 +719,25 @@ export function start() {
         String(button.dataset.task === selectedTask),
       );
     for (const seat of seatButtons) {
-        seat.removeAttribute("data-focus");
-        seat.removeAttribute("data-focus-key");
-      }
-    if (selectedSeat && selectedTask)
-      seatButtons
-        .find((seat) => seat.dataset.seat === selectedSeat)
-        ?.setAttribute("data-focus", selectedTask);
-    const focusPicker = el("focus-picker");
-    focusPicker.hidden = !selectedSeat;
-    focusPicker.classList.toggle("is-visible", !!selectedSeat);
+      seat.removeAttribute("data-focus");
+      seat.removeAttribute("data-focus-key");
+    }
+    if (selectedSeat && selectedTask) {
+      const activeSeat = seatButtons.find((seat) => seat.dataset.seat === selectedSeat);
+      activeSeat?.setAttribute("data-focus", selectedTask);
+      activeSeat?.setAttribute("data-focus-key",
+        taskButtons.find((item) => item.dataset.task === selectedTask)?.dataset.taskKey || "");
+    }
+    if (preflightStage !== "seat") closeFocusPicker(false);
     const checkinTicket = el("checkin-ticket");
     checkinTicket.classList.toggle("is-tearing", checkinStarted && !checkinCompleted);
     checkinTicket.classList.toggle("is-torn", checkinCompleted);
+    show("checkin-continue", checkinCompleted && preflightStage === "checkin");
     el("checkin-instruction").textContent = checkinCompleted
       ? "\u503c\u673a\u5b8c\u6210"
       : "\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u7968\u6839";
     refreshPlanner();
+    scheduleTicketFit();
     if (preflightStage === "home") map?.select(origin);
     else if (preflightStage === "flight")
       map?.plan(
@@ -980,7 +1013,7 @@ export function start() {
     preflightStage = "seat";
     map?.select();
     renderPreflight();
-    seatButtons[0]?.focus();
+    seatButtons[0]?.focus({ preventScroll: true });
   };
   el<HTMLButtonElement>("confirm-seat").onclick = () => {
     if (!origin || !destination || !selectedSeat || !selectedTask) return;
@@ -998,7 +1031,7 @@ export function start() {
     checkinStarted = true;
     renderPreflight();
     paintCheckinProgress();
-    requestAnimationFrame(() => el("checkin-stub").focus());
+    requestAnimationFrame(() => el("checkin-stub").focus({ preventScroll: true }));
   };
   const checkinStub = el<HTMLButtonElement>("checkin-stub");
   const checkinTicket = el<HTMLElement>("checkin-ticket");
@@ -1014,7 +1047,6 @@ export function start() {
     checkinStub.setAttribute("aria-valuenow", String(Math.round(checkinProgress * 100)));
   };
   function resetCheckin() {
-    checkinCompletionId += 1;
     checkinStarted = false;
     checkinCompleted = false;
     checkinProgress = 0;
@@ -1024,18 +1056,17 @@ export function start() {
   }
   const completeCheckin = () => {
     if (checkinCompleted || !checkinStarted || preflightStage !== "checkin") return;
-    const completionId = ++checkinCompletionId;
     checkinProgress = 1;
     checkinCompleted = true;
     checkinTicket.classList.remove("dragging", "springing");
     paintCheckinProgress();
     renderPreflight();
-    window.setTimeout(() => {
-      if (completionId !== checkinCompletionId || !checkinCompleted || preflightStage !== "checkin") return;
-      preflightStage = "airplane";
-      renderPreflight();
-      el("boarding-action").focus();
-    }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 650);
+  };
+  el<HTMLButtonElement>("checkin-continue").onclick = () => {
+    if (!checkinCompleted || preflightStage !== "checkin") return;
+    preflightStage = "airplane";
+    renderPreflight();
+    el("boarding-action").focus({ preventScroll: true });
   };
   checkinStub.setAttribute("role", "slider");
   checkinStub.setAttribute("aria-orientation", "horizontal");

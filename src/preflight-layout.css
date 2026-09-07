@@ -1,0 +1,163 @@
+/* Preflight presentation: one decision at a time. */
+#planner #seat-content,
+#planner #seat-content:has(#focus-picker.is-visible) {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  align-items: stretch;
+  min-height: 0;
+  padding: 18px 24px;
+  gap: 0;
+  overflow: visible;
+}
+#planner #seat-content .seat-cabin,
+#planner #seat-content:has(#focus-picker.is-visible) .seat-cabin {
+  grid-column: 1;
+  grid-row: 1;
+  transform: none;
+  width: min(438px, 100%);
+  max-width: 100%;
+}
+#planner #focus-picker {
+  position: fixed;
+  inset: 0;
+  display: block;
+  width: min(400px, calc(100vw - 32px));
+  max-width: none;
+  min-width: 0;
+  max-height: calc(100vh - 32px);
+  margin: auto;
+  padding: 20px;
+  overflow-y: auto;
+  border: 1px solid #ffffff22;
+  border-radius: 20px;
+  background: #111b20;
+  color: #e8eded;
+  box-shadow: 0 28px 90px #0009, inset 0 1px 0 #ffffff0b;
+  opacity: 0;
+  transform: translateY(8px) scale(.98);
+  transition: opacity 180ms ease, transform 220ms cubic-bezier(.2,.75,.25,1);
+}
+#planner #focus-picker[hidden] { display: none !important; }
+#planner #focus-picker.is-visible { opacity: 1; transform: none; }
+#planner #focus-picker::backdrop { background: #05090cc0; backdrop-filter: blur(3px); }
+#planner #focus-picker .focus-picker-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  place-items: center;
+  border-radius: 10px;
+  color: #a9b5b9;
+  background: #ffffff08;
+  font-size: 20px;
+  line-height: 1;
+}
+#planner #focus-picker .focus-picker-close:hover { background: #ffffff12; color: #e8eded; }
+#planner #focus-picker .focus-seat-label { margin-right: 38px; }
+#planner #focus-picker .task-options { grid-template-columns: 1fr; }
+
+/* The card and its detached stub must both remain inside the window. */
+#planner.preflight-console[data-stage="boarding"],
+#planner.preflight-console[data-stage="checkin"] {
+  top: 16px;
+  bottom: 16px;
+  left: 50%;
+  right: auto;
+  display: flex;
+  flex-direction: column;
+  width: min(920px, calc(100vw - 32px));
+  height: calc(100vh - 32px);
+  max-height: none;
+  padding: 0;
+  overflow: hidden;
+  transform: translateX(-50%);
+}
+#planner #boarding-stage,
+#planner #checkin-stage {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+#planner #boarding-stage .stage-heading,
+#planner #checkin-stage .stage-heading { flex: 0 0 auto; }
+#planner #boarding-stage .ticket-viewport,
+#planner #checkin-stage .ticket-viewport {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 10px 18px;
+}
+#planner .ticket-fit {
+  position: relative;
+  flex: none;
+  width: 820px;
+  transform: scale(var(--ticket-scale, 1));
+  transform-origin: center center;
+}
+#planner .ticket-fit > .boarding-pass {
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+}
+#planner #boarding-stage .boarding-action,
+#planner #checkin-stage .boarding-action {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 12px 18px 16px;
+}
+#planner #checkin-stage .checkin-actions {
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: flex-end;
+}
+#planner #checkin-stage .checkin-instruction {
+  flex: 0 0 auto;
+  margin: 12px 18px 0;
+  font-size: 11px;
+}
+/* The cut travels along the seam; the whole stub does not slide offscreen. */
+#planner .boarding-pass-checkin .boarding-stub-detachable,
+#planner .boarding-pass-checkin .boarding-stub-detachable:active:not(:disabled) {
+  transform: translate3d(0, var(--tear-drop, 0px), 0) rotate(var(--tear-angle, 0deg));
+  transform-origin: 50% 0;
+}
+/* No paper fragment is allowed to disappear below the clipping edge. */
+#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable,
+#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable:active:not(:disabled) {
+  transform: translate3d(12px, 24px, 0) rotate(-2deg);
+  opacity: 1;
+  pointer-events: none;
+  transition: transform 600ms cubic-bezier(.2,.75,.25,1), opacity 500ms ease;
+}
+#planner .boarding-pass-checkin.is-torn .tear-handle { opacity: 0; pointer-events: none; }
+@media (max-width: 760px) {
+  #planner.preflight-console[data-stage="boarding"],
+  #planner.preflight-console[data-stage="checkin"] {
+    left: 16px;
+    right: 16px;
+    width: auto;
+    transform: none;
+  }
+  #planner #seat-content { padding: 12px 14px; }
+  #planner #focus-picker { padding: 16px; }
+  #planner #boarding-stage .ticket-viewport,
+  #planner #checkin-stage .ticket-viewport { padding: 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #planner #focus-picker { transition: none; transform: none; }
+  #planner .boarding-pass-checkin.is-torn .boarding-stub-detachable { transition: none; }
+  #planner #focus-picker::backdrop { backdrop-filter: none; }
+}

@@ -30,6 +30,39 @@ async function decodeQR(page, id) {
   assert.ok(result, `${id} must decode as a standard QR code`);
   return result.data;
 }
+async function assertTicketInBounds(page, stage) {
+  await page.waitForFunction(stage => {
+    const frame = document.querySelector(`#${stage}-ticket-frame`);
+    return frame && frame.style.getPropertyValue("--ticket-scale");
+  }, stage, { timeout: 2000 }).catch(async () => {
+    console.log("TICKET FIT DIAGNOSTIC", await page.evaluate(stage => {
+      const ids = ["planner", `${stage}-stage`, `${stage}-ticket-viewport`, `${stage}-ticket-frame`, `${stage}-ticket`];
+      return ids.map(id => {
+        const el = document.getElementById(id);
+        return {id, exists:!!el, hidden:el?.hidden, width:el?.clientWidth, height:el?.clientHeight, style:el?.getAttribute("style"), rect:el?.getBoundingClientRect().toJSON()};
+      });
+    }, stage));
+    throw new Error("Ticket fitter did not complete");
+  });
+  const result = await page.evaluate(stage => {
+    const bounds = el => {
+      const r = el.getBoundingClientRect();
+      return {left:r.left,top:r.top,right:r.right,bottom:r.bottom,width:r.width,height:r.height};
+    };
+    const viewport = bounds(document.querySelector(`#${stage}-ticket-viewport`));
+    const ticket = bounds(document.querySelector(`#${stage}-ticket`));
+    const stub = bounds(document.querySelector(`#${stage}-ticket .boarding-ticket-stub`));
+    const qr = bounds(document.querySelector(`#${stage}-qr`));
+    return {viewport,ticket,stub,qr};
+  }, stage);
+  for (const key of ["ticket","stub","qr"]) {
+    const r=result[key],v=result.viewport;
+    assert.ok(r.left >= v.left-2 && r.right <= v.right+2 && r.top >= v.top-2 && r.bottom <= v.bottom+2,
+      `${stage} ${key} clipped: ${JSON.stringify(result)}`);
+  }
+  assert.ok(result.ticket.height > 0 && result.ticket.width > 0);
+  return result;
+}
 async function run() {
   fs.mkdirSync("artifacts", { recursive: true });
   const desktop = !!process.env.HANGKE_CDP;
@@ -94,10 +127,31 @@ async function run() {
     const cabin = page.locator(".seat-cabin");
     const bounds = await cabin.evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
     assert.ok(bounds.scroll > bounds.client + 400, JSON.stringify(bounds));
+    assert.equal(await page.locator("#focus-picker").isVisible(), false);
+    const cabinBefore = await cabin.boundingBox();
     await page.locator('[data-seat="22F"]').click();
     assert.ok(await cabin.evaluate(el => el.scrollTop > 0), "rear rows must be reachable by scrolling");
     await page.locator("#focus-picker").waitFor({ state: "visible" });
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-seat="22F"]')).backgroundColor === "rgb(64, 111, 155)");
+    const pendingSeatColor = await page.locator('[data-seat="22F"]').evaluate(el => getComputedStyle(el).backgroundColor);
+    assert.equal(pendingSeatColor, "rgb(64, 111, 155)", "pending seat must use blue, not aviation yellow");
+    assert.equal(await page.locator("#focus-picker-close").innerText(), "\u00d7");
+    assert.equal(await page.locator("#focus-picker-close").getAttribute("aria-label"), "\u5173\u95ed\u4e13\u6ce8\u7c7b\u578b\u9009\u62e9");
+    assert.equal(await page.locator("#focus-picker").evaluate(el => el.matches(":modal")), true);
+    const cabinAfter = await cabin.boundingBox();
+    assert.ok(Math.abs(cabinBefore.x - cabinAfter.x) < 1, "selecting a seat must not shift the cabin into a side column");
+    await page.keyboard.press("Escape");
+    await page.locator("#focus-picker").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#confirm-seat").isVisible(), false);
+    await page.locator('[data-seat="22F"]').click();
+    await page.locator("#focus-picker").waitFor({ state: "visible" });
     await page.locator('[data-task-key="code"]').click();
+    await page.locator("#focus-picker").waitFor({ state: "hidden" });
+    assert.equal(await page.locator("#confirm-seat").isVisible(), true);
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-seat="22F"]')).backgroundColor === "rgb(109, 88, 152)");
+    const confirmedSeatColor = await page.locator('[data-seat="22F"]').evaluate(el => getComputedStyle(el).backgroundColor);
+    assert.equal(confirmedSeatColor, "rgb(109, 88, 152)", "confirmed seat must keep its activity color");
+    assert.equal((await state(page)).activeFlight, null);
     assert.equal(await page.locator('[data-seat="22F"]').getAttribute("data-focus-key"), "code");
     await page.setViewportSize({ width: 900, height: 600 }).catch(() => {});
     await page.locator("#confirm-seat").click();
@@ -112,6 +166,14 @@ async function run() {
     assert.ok(qr1.startsWith("HANGKE|1|CGQ|"));
     assert.ok(qr1.includes("|22F|60|"));
     assert.ok(await page.locator("#boarding-barcode").evaluate(el => el.width > 100 && el.height > 20));
+    await assertTicketInBounds(page, "boarding");
+    if (!desktop) {
+      for (const size of [{width:1111,height:754},{width:720,height:480},{width:900,height:600}]) {
+        await page.setViewportSize(size);
+        await pause(60);
+        await assertTicketInBounds(page, "boarding");
+      }
+    }
     await page.screenshot({ path: `artifacts/${desktop ? "windows" : "browser"}-boarding-pass.png` });
     await page.locator("#next-step").click();
     await page.locator("#checkin-stage").waitFor({ state: "visible" });
@@ -119,6 +181,7 @@ async function run() {
     assert.equal(await page.locator("#checkin-time").innerText(), boardingTime);
     assert.equal(await page.locator("#checkin-date").innerText(), boardingDate);
     assert.equal((await state(page)).activeFlight, null);
+    await assertTicketInBounds(page, "checkin");
     const stub = page.locator("#checkin-stub");
     const handle = page.locator("#checkin-tear-handle");
     const ticket = page.locator("#checkin-ticket");
@@ -139,6 +202,7 @@ async function run() {
     await page.mouse.move(x + 65, y, { steps: 6 });
     const partial = await ticket.evaluate(el => Number(el.style.getPropertyValue("--tear-progress")));
     assert.ok(partial > 0 && partial < .85, `partial horizontal tear: ${partial}`);
+    await assertTicketInBounds(page, "checkin");
     await page.screenshot({ path: `artifacts/${desktop ? "windows" : "browser"}-tear.png` });
     await page.mouse.up();
     await page.waitForFunction(() => Number(document.querySelector("#checkin-ticket").style.getPropertyValue("--tear-progress")) === 0);
@@ -153,6 +217,14 @@ async function run() {
     const x3 = again.x + again.width / 2, y3 = again.y + again.height / 2;
     await page.mouse.move(x3, y3); await page.mouse.down();
     await page.mouse.move(seam.x + seam.width - 20, y3, { steps: 18 }); await page.mouse.up();
+    await page.waitForFunction(() => document.querySelector("#checkin-ticket").classList.contains("is-torn"));
+    await pause(650);
+    await assertTicketInBounds(page, "checkin");
+    assert.equal((await state(page)).activeFlight, null);
+    assert.equal(await page.locator("#checkin-stage").isVisible(), true);
+    await page.locator("#checkin-continue").waitFor({ state: "visible" });
+    assert.equal(await page.locator("#checkin-continue").innerText(), "\u7ee7\u7eed\u767b\u673a");
+    await page.locator("#checkin-continue").click();
     await page.locator("#airplane-stage").waitFor({ state: "visible" });
     await page.locator("#boarding-action").click();
     await page.locator("#ready-stage").waitFor({ state: "visible" });

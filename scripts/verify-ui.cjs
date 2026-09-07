@@ -75,6 +75,8 @@ async function completePreflight(page, { originIata, duration = 30, taskIndex = 
   assert.equal((await state(page)).activeFlight, null, "check-in is draft only");
   await page.locator("#checkin-stub").waitFor({ state: "visible" });
   await page.locator("#checkin-stub").press("Enter");
+  await page.locator("#checkin-continue").waitFor({ state: "visible" });
+  await page.locator("#checkin-continue").click();
   await page.locator("#airplane-stage").waitFor({ state: "visible" });
   assert.equal((await state(page)).activeFlight, null, "airplane mode is draft only");
   await page.locator("#boarding-action").click();
@@ -101,7 +103,7 @@ async function completePreflight(page, { originIata, duration = 30, taskIndex = 
     if (/\/\d+\/\d+\/\d+\.(pbf|mvt)/.test(r.url()) && r.ok()) tiles.push(r.url());
   });
   page.on("worker", (w) => workers.push(w.url()));
-  if (!desktop) await page.goto("http://127.0.0.1:4173"); else await page.reload();
+  if (!desktop) await page.goto(process.env.HANGKE_PREVIEW_URL || "http://127.0.0.1:4173"); else await page.reload();
   await page.locator("#planner").waitFor();
   await page.evaluate(() => localStorage.removeItem("hangke.v1"));
   await page.reload();
