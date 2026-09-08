@@ -8,7 +8,9 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "tauri": "tauri",
-    "test": "node --experimental-strip-types --test tests/*.test.ts"
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "verify:windows-release": "node scripts/verify-windows-release.cjs",
+    "verify:windows-single-instance": "node scripts/verify-windows-single-instance.cjs"
   },
   "dependencies": {
     "bwip-js": "4.11.4",

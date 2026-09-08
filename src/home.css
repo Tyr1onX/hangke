@@ -1,0 +1,239 @@
+/* Map-first home and local-data views. All selectors are scoped to the home stage. */
+#planner.preflight-console[data-stage="home"] {
+  position:absolute;inset:0;left:0;right:0;top:0;bottom:0;
+  display:block;width:100%;height:100%;max-height:none;margin:0;padding:0;
+  border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;
+  transform:none;overflow:visible;pointer-events:none;
+}
+#planner[data-stage="home"] #home-stage,#home-dashboard {position:relative;width:100%;height:100%;min-width:0;margin:0;padding:0;}
+#planner[data-stage="home"] .home-overview {position:absolute;inset:0;pointer-events:none;}
+.home-overview::before {content:"";position:absolute;inset:0;background:linear-gradient(90deg,#0b1012b3,transparent 35%),linear-gradient(0deg,#0b1012ed,transparent 26%);pointer-events:none;}
+/* Quiet typography and a shared baseline leave the map unobstructed. */
+.home-intro {position:absolute;top:32px;left:36px;max-width:360px;z-index:2;}
+.home-clock {font-size:12px;font-variant-numeric:tabular-nums;color:#a8b6ba;letter-spacing:.12em;}
+.home-intro h1 {margin:9px 0 28px;font-size:29px;line-height:1.2;font-weight:500;letter-spacing:-.03em;}
+.home-place-label {font-size:10px;color:#8d9da3;letter-spacing:.12em;}
+#planner[data-stage="home"] .home-airport {display:flex;align-items:baseline;gap:12px;min-width:0;margin-top:6px;flex-wrap:wrap;}
+#planner[data-stage="home"] .home-airport strong {font-size:38px;font-weight:500;letter-spacing:.06em;color:#e8e9dc;}
+#planner[data-stage="home"] .home-airport span {font-size:12px;color:#b4c0c5;line-height:1.5;}
+.home-location-action {display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:0;min-height:28px;border:0;background:transparent;color:#aab9bf;font-size:11px;pointer-events:auto;}
+.home-location-action:hover {color:#e0c778;background:transparent;}
+.home-journey {position:absolute;left:50%;bottom:150px;display:flex;flex-direction:column;align-items:center;gap:10px;transform:translateX(-50%);white-space:nowrap;pointer-events:auto;}
+.home-journey-caption {font-size:10px;color:#aab9bf;letter-spacing:.09em;}
+#planner[data-stage="home"] .home-primary {display:inline-flex;align-items:center;justify-content:space-between;gap:24px;width:174px;min-height:40px!important;padding:0 16px;border:0;border-radius:6px;background:#d9c279;color:#24241e;box-shadow:none;font-size:12px;font-weight:600;grid-column:auto;grid-row:auto;transition:background 150ms ease;}
+.home-shortcuts {position:absolute;bottom:30px;left:50%;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;width:min(880px,calc(100vw - 72px));transform:translateX(-50%);pointer-events:auto;border-top:1px solid #ffffff24;}
+.home-shortcut {position:relative;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;align-content:center;gap:9px 12px;min-width:0;min-height:90px;padding:18px 24px;border:0;border-radius:0;background:transparent;box-shadow:none;backdrop-filter:none;text-align:left;transition:background 150ms ease;}
+.home-shortcut:first-child {padding-left:0;}
+.home-shortcut + .home-shortcut::before {content:"";position:absolute;left:0;top:22px;bottom:22px;width:1px;background:#ffffff14;}
+.home-shortcut-icon {grid-column:2;grid-row:1;align-self:center;color:#8c9b9f;}
+.home-shortcut-icon svg {display:block;width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round;}
+.home-shortcut-title {grid-column:1;grid-row:1;font-size:11px;font-weight:400;color:#9cabb0;letter-spacing:.04em;}
+.home-shortcut small {grid-column:1 / -1;grid-row:2;font-size:22px;font-weight:400;font-variant-numeric:tabular-nums;color:#e2e8e7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.home-shortcut[data-home-page="progress"] small {font-size:14px;line-height:27px;color:#d9c279;letter-spacing:.04em;}
+.home-shortcut[data-home-page="world"] small {font-size:18px;line-height:27px;}
+.home-stat-unit {font-size:11px;color:#9cabb0;margin-left:6px;}
+.home-shortcut:focus-visible,.home-primary:focus-visible,.home-location-action:focus-visible {outline:2px solid #d9c279;outline-offset:4px;}
+@media(hover:hover) and (pointer:fine) {
+ .home-shortcut:hover:not(:disabled) {background:#ffffff05;transform:none;}
+ #planner[data-stage="home"] .home-primary:hover:not(:disabled) {background:#e5cf8c;box-shadow:none;}
+}
+#home-radar {position:absolute;z-index:2;width:0;height:0;pointer-events:none;}
+#home-radar .home-radar-dot {position:absolute;left:-2px;top:-2px;width:4px;height:4px;border-radius:50%;background:#d9c279;box-shadow:none;}
+#home-radar .home-radar-ring {position:absolute;left:0;top:0;width:34px;height:34px;margin:-17px;border:1px solid #d9c27966;border-radius:50%;opacity:0;animation:home-radar 4.8s ease-out infinite;}
+#home-radar .home-radar-ring:nth-child(2) {animation-delay:1.6s;}
+#home-radar .home-radar-ring:nth-child(3) {animation-delay:3.2s;}
+@keyframes home-radar {0%{transform:scale(.4);opacity:.45}100%{transform:scale(3.8);opacity:0}}
+/* Map-backed pages use the screenshot hierarchy, sized for desktop content. */
+#planner[data-stage="home"] .home-detail,#history:not([hidden]) {position:absolute;top:24px;right:24px;bottom:24px;display:flex;flex-direction:column;width:min(720px,calc(100vw - 96px));min-height:0;padding:0;overflow:hidden;border:1px solid #ffffff1c;border-radius:18px;background:#22262deb;box-shadow:0 8px 32px #0003;backdrop-filter:none;pointer-events:auto;}
+.home-detail-heading {display:flex;align-items:center;gap:14px;flex:none;padding:20px 24px 16px;}
+.home-detail-heading h1,.home-detail-heading h2 {margin:0;font-size:25px;font-weight:600;letter-spacing:-.02em;}
+.home-detail-heading .back-action {width:32px;height:32px;min-height:32px;padding:0;border-radius:50%;border:1px solid #ffffff19;background:#15191dc9;color:#d4dcdf;flex:none;}
+.home-detail-content {flex:1;min-height:0;overflow-y:auto;padding:4px 24px 24px;scrollbar-width:thin;scrollbar-color:#737d8055 transparent;}
+.home-detail-content button:focus-visible,#history button:focus-visible {outline:2px solid #afcdd1;outline-offset:3px;}
+.home-section-label {font-size:12px;letter-spacing:.06em;font-weight:500;color:#aab1bc;margin:24px 4px 12px;}
+.home-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;}
+.home-metrics div {display:flex;flex-direction:column;gap:8px;min-width:0;}
+.home-metrics span {font-size:11px;color:#abb7bc;}
+.home-metrics strong {font-size:20px;font-weight:500;color:#e7edef;font-variant-numeric:tabular-nums;overflow-wrap:anywhere;}
+.home-route-art {display:block;width:100%;height:100%;object-fit:contain;pointer-events:none;}
+.world-roam-entry {position:relative;display:flex;align-items:center;justify-content:space-between;width:100%;height:150px;overflow:hidden;padding:24px 30px;border:1px solid #ffffff17;border-radius:14px;background:#2c3039;text-align:right;color:#c4cbd3;}
+.world-roam-entry>.home-route-art {position:absolute;inset:0;opacity:.55;}
+.world-roam-entry>span {position:relative;display:flex;flex-direction:column;gap:6px;align-items:flex-end;font-size:14px;}
+.world-roam-entry strong {font-size:20px;font-weight:500;color:#e9edef;}
+.world-roam-entry b {font-size:25px;font-weight:400;}
+.mini-earth {position:relative;z-index:1;width:105px;height:105px;border-radius:50%;background:#51565a url('./assets/ticket-world.svg') 60% center/210% 110%;box-shadow:inset -28px -12px 24px #000c,inset 3px 3px 8px #ffffff0e;}
+.world-achievement {position:relative;height:330px;overflow:hidden;border:1px solid #ffffff16;border-radius:16px;background:#111416;}
+.achievement-copy {position:relative;z-index:2;display:flex;align-items:flex-start;flex-direction:column;gap:14px;padding:26px 30px;}
+.achievement-copy h3 {margin:0;font-size:13px;font-weight:400;color:#c0c7c8;}
+.achievement-copy>strong {font-size:56px;line-height:1.1;font-family:Georgia,'Times New Roman',serif;font-weight:400;color:#f1f2f0;}
+.achievement-copy small {font-size:29px;}
+.achievement-copy>span {font-size:13px;color:#aab2b5;padding-top:10px;border-top:1px solid #777e8266;}
+.achievement-earth {position:absolute;right:-70px;bottom:-235px;width:475px;height:440px;border-radius:50%;border:1px solid #b7c6cb80;transform:rotate(-22deg);overflow:hidden;background:#242a2e;box-shadow:0 -5px 16px #a2b5c715,inset 36px 44px 50px #0008;}
+.achievement-earth>div {width:100%;height:100%;background:url('./assets/ticket-world.svg') 75% center/190% 100%;opacity:.3;}
+.achievement-orbit {position:absolute;width:580px;height:450px;border:1px solid #9dafba33;border-radius:50%;right:-115px;bottom:-214px;transform:rotate(-28deg);}
+.achievement-orbit svg {position:absolute;width:29px;height:29px;left:37px;top:55px;transform:rotate(50deg);color:#c2ced1;}
+.world-achievement>p {position:absolute;bottom:18px;left:30px;font-size:10px;color:#88959b;z-index:2;}
+.world-airports-card {position:relative;display:block;width:100%;height:142px;overflow:hidden;padding:18px 26px;border:1px solid #ffffff17;border-radius:14px;background:#303640;color:#e3e9eb;text-align:left;}
+.world-airports-card>span {display:flex;flex-direction:column;gap:5px;position:relative;z-index:2;font-size:13px;}
+.world-airports-card strong {font-size:34px;font-weight:500;line-height:1;}
+.world-airports-card small {font-size:11px;color:#b0bdc4;margin-top:10px;}
+.world-airports-card>.home-route-art {position:absolute;inset:0;opacity:.5;}
+.world-airports-card>svg:not(.home-route-art) {position:absolute;right:50px;top:10px;width:140px;height:140px;color:#c4cdd1;transform:rotate(54deg);z-index:1;}
+.world-airport-list {padding-top:14px;font-size:13px;color:#b8c4c9;}
+.home-world-airport {padding:0 4px;border-bottom:1px solid #ffffff15;}
+.home-world-airport summary {display:flex;align-items:center;gap:20px;min-height:54px;cursor:pointer;list-style:none;}
+.home-world-airport summary strong {font:500 18px ui-monospace,Consolas,monospace;letter-spacing:.06em;color:#e0e8ea;}
+.home-world-airport summary b {margin-left:auto;font-weight:400;}
+.home-world-airport p {font-size:12px;line-height:1.6;color:#aebbc0;}
+.home-world-airport button {background:transparent;border:0;color:#b5d2d6;padding:10px 0;margin-bottom:6px;font-size:12px;}
+/* A calendar, time plot, route map and ring each express a different statistic. */
+#home-dashboard[data-page="trends"] .home-detail {background:#292a27f5;}
+.home-periods {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;margin-bottom:18px;padding:3px;border-radius:20px;background:#ffffff12;}
+.home-periods button {min-height:32px;padding:0 4px;border:0;border-radius:18px;background:transparent;color:#b7bcb8;font-size:12px;}
+.home-periods button[aria-pressed="true"] {background:#676b69;color:#fff;font-weight:500;}
+.trend-grid {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+.trend-grid>article {position:relative;min-width:0;padding:22px;overflow:hidden;border:1px solid #ffffff13;border-radius:14px;background:#1d201e;}
+.trend-grid h3 {font-size:14px;font-weight:400;color:#a8afaa;margin:0 0 16px;}
+.trend-grid h3>small {float:right;font-size:10px;color:#8d9691;}
+.trend-grid p {font-size:11px;color:#9fa9a2;line-height:1.5;}
+.trend-number {display:block;font-size:28px;font-weight:600;color:#eef0ea;font-variant-numeric:tabular-nums;line-height:1.35;}
+.trend-number small {font-size:14px;font-weight:400;color:#a8b1ab;}
+.trend-streak {grid-column:1 / -1;}
+.trend-streak .trend-number {display:flex;align-items:baseline;gap:16px;}
+.trend-streak .trend-number>span {font-size:14px;color:#aeb8b1;}
+.flight-calendar {display:grid;grid-template-columns:repeat(14,minmax(0,1fr));gap:9px;margin-top:24px;}
+.flight-calendar>div {display:flex;align-items:center;flex-direction:column;gap:8px;}
+.flight-calendar i {display:block;width:100%;max-width:28px;height:36px;border-radius:12px;background:#ffffff07;border:3px solid #ffffff06;}
+.flight-calendar i.flown {background:#b7aa71;border-color:#827c5f;}
+.flight-calendar i.today {outline:1px solid #99c8d2;outline-offset:3px;}
+.flight-calendar small {font-size:9px;color:#929e96;}
+.home-chart {display:flex;align-items:flex-end;gap:5px;height:160px;margin-top:22px;padding:0 0 24px;border-bottom:1px solid #ffffff10;overflow-x:auto;}
+.home-chart-column {position:relative;display:flex;align-items:flex-end;justify-content:center;flex:1 0 8px;min-width:8px;height:100%;}
+.home-chart-bar {width:min(100%,24px);min-height:0;background:#8db8bd;border-radius:4px 4px 0 0;}
+.home-chart-column small {position:absolute;top:calc(100% + 7px);font-size:9px;color:#939f98;white-space:nowrap;}
+.home-chart-note {font-size:10px;color:#98a49e;margin:16px 2px 0;}
+.chart-empty {margin:10px 0 0;}
+.trend-flights .home-route-art {height:145px;opacity:.9;margin:14px 0 0;}
+.trend-flights p {margin-bottom:0;}
+.trend-scenes .scene-chart {position:relative;max-width:230px;margin:auto;}
+.scene-chart svg {display:block;width:100%;transform:rotate(-90deg);}
+.scene-chart circle {fill:none;stroke-width:20;}
+.scene-chart .scene-track {stroke:#ffffff09;}
+.scene-chart>div {position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.scene-chart strong {font-size:18px;font-weight:600;}
+.scene-chart span {font-size:11px;color:#8e9b93;}
+.trend-scenes ul {list-style:none;padding:0;margin:16px 0 0;}
+.trend-scenes li {display:flex;align-items:center;gap:9px;margin-top:10px;font-size:12px;color:#c2ccc5;}
+.trend-scenes li i {width:4px;height:16px;border-radius:2px;flex:none;}
+.trend-scenes li span {overflow-wrap:anywhere;}
+.trend-scenes li strong {margin-left:auto;white-space:nowrap;font-size:11px;font-weight:400;color:#abb8ae;}
+/* Flight profile reuses the existing history DOM and callbacks. */
+#history:not([hidden]) {background:#25292df5;}
+#history .home-detail-heading {margin:0;}
+.history-passport {position:relative;flex:none;margin:4px 24px 0;padding:24px 26px;border:1px solid #a2b8c331;border-radius:14px;background:#2d3a44;overflow:hidden;}
+.history-passport::after {content:"";position:absolute;right:-30px;top:-50px;width:250px;height:250px;background:url('./assets/ticket-world.svg') center/cover;opacity:.07;pointer-events:none;}
+.history-passport>span {font-size:10px;letter-spacing:.16em;color:#a7c2cf;}
+.history-passport h2 {font-size:27px;font-weight:500;margin:20px 0 10px;}
+.history-passport p {font-size:11px;color:#b3c1c9;}
+.history-passport .home-metrics {margin-top:24px;padding-top:18px;border-top:1px solid #c2d1d520;}
+.history-log-label {flex:none;font-size:12px;letter-spacing:.13em;font-weight:500;color:#b2bec4;margin:24px 28px 0;}
+.history-log-label span {float:right;font-size:10px;letter-spacing:0;color:#89979d;}
+#history-list {padding:12px 24px 20px;overflow-y:auto;flex:1;min-height:80px;font-size:13px;color:#a3b0b5;}
+#history .history-item {width:100%;position:relative;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 18px;margin:0 0 8px;border:1px solid #ffffff12;border-radius:10px;background:#171c20;text-align:left;}
+#history .history-item strong {font:500 19px ui-monospace,Consolas,monospace;letter-spacing:.04em;}
+#history .history-item small {font-size:11px;color:#a2afb6;}
+#details {flex:none;max-height:30%;overflow-y:auto;margin:0 24px 20px;padding:12px 16px;border:1px dashed #ffffff25;border-radius:8px;background:#171c20;}
+#details p {margin:7px 0;font-size:12px;color:#bbc7ca;}
+/* A boarding pass and two instruments; all values come from the active flight. */
+#home-dashboard[data-page="progress"] .home-detail {background:#25352ff2;max-width:600px;}
+.active-boarding {position:relative;padding:24px;border:1px solid #ffffff10;border-radius:13px;background:#171e1b;}
+.active-boarding header {display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#a8b4ad;}
+.flight-status {padding:5px 9px;border-radius:6px;background:#ffffff0a;color:#dbe5dc;}
+.active-route {display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin:26px 0 22px;font:600 32px ui-monospace,Consolas,monospace;}
+.active-route>span:last-child {text-align:right;}
+.active-route small {display:block;font:400 12px/1.6 system-ui;margin-top:8px;color:#a7b5ab;}
+.ticket-route-line {position:relative;flex:1;text-align:center;border-top:1px solid #76827a66;margin-top:20px;}
+.ticket-route-line svg {position:relative;width:28px;height:28px;margin-top:-15px;background:#171e1b;transform:rotate(90deg);color:#9dada4;}
+.ticket-route-line small {white-space:nowrap;}
+.boarding-facts {display:grid;grid-template-columns:1fr 1.2fr .7fr;gap:16px;border-top:1px dashed #95a59933;padding-top:20px;}
+.boarding-facts>div {display:flex;flex-direction:column;gap:7px;}
+.boarding-facts>div:last-child {text-align:right;}
+.boarding-facts span {font-size:11px;color:#9ea9a1;}
+.boarding-facts strong {font-size:18px;font-weight:500;color:#dce5dd;}
+.active-boarding>p {font-size:11px;color:#b0bbb3;margin:18px 0 0;}
+.active-instruments {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:18px 0;}
+.active-instruments article {position:relative;height:178px;padding:18px;overflow:hidden;border:1px solid #ffffff0c;border-radius:12px;background:#19201c;text-align:center;}
+.active-instruments h3 {font-size:12px;font-weight:400;color:#a5b2a9;margin:0;}
+.active-instruments strong {position:absolute;left:0;right:0;bottom:34px;font-size:24px;font-weight:500;}
+.time-gauge {position:absolute;width:90%;left:5%;bottom:15px;}
+.time-gauge path {fill:none;stroke:#b3cbb414;stroke-width:8;}
+#time-gauge-value {stroke:#a9c5b5;stroke-width:3;}
+.distance-gauge {position:absolute;bottom:17px;left:22px;right:22px;height:13px;background:repeating-linear-gradient(90deg,#95ae9d44 0 2px,transparent 2px 10px);}
+.distance-gauge i {position:absolute;bottom:0;height:22px;width:2px;background:#c5ddd0;transform:translateX(-1px);}
+#home-resume {display:flex;justify-content:space-between;width:100%;min-height:42px;margin-top:22px;border-radius:8px;background:#d5e2da;color:#19271f;font-size:13px;box-shadow:none;}
+/* Roaming exposes the same globe, with a small toolbar and airport inspector. */
+#planner[data-stage="home"] .home-detail.is-roaming {inset:20px auto auto 24px;width:300px;height:auto;max-height:calc(100% - 40px);background:#1b252aee;border-radius:12px;box-shadow:none;}
+.is-roaming .home-detail-heading {padding:16px 16px 8px;}
+.is-roaming .home-detail-heading h2 {font-size:20px;}
+.is-roaming .home-detail-content {padding:4px 16px 16px;}
+.roam-hint {font-size:11px;line-height:1.6;color:#aab9c0;}
+.roam-controls {display:flex;gap:6px;margin:14px 0;}
+.roam-controls button {min-height:32px;padding:4px 9px;border:1px solid #ffffff14;border-radius:6px;background:#ffffff05;color:#dce7e9;font-size:13px;}
+.roam-controls button:last-child {font-size:11px;}
+.roam-airports label {display:block;font-size:11px;color:#98afb8;margin-bottom:8px;}
+.roam-airports select {width:100%;min-height:34px;border:1px solid #ffffff20;border-radius:6px;background:#1b252a;color:#d2e0e5;font-size:12px;}
+#roam-airport-info {font-size:11px;color:#a7bdc6;line-height:1.6;margin-top:10px;overflow-wrap:anywhere;}
+@media(hover:hover) and (pointer:fine) {.world-roam-entry:hover,.world-airports-card:hover {border-color:#b5ced344;filter:brightness(1.06);} .roam-controls button:hover {background:#ffffff12;}}
+@media(max-width:1100px) {
+ #planner[data-stage="home"] .home-detail,#history:not([hidden]) {width:min(590px,calc(100vw - 80px));}
+ .trend-grid {grid-template-columns:1fr;}
+ .trend-streak {grid-column:auto;}
+ .world-achievement {height:300px;}
+}
+@media(max-height:650px) {.history-passport {padding:18px 22px;}.history-passport h2{font-size:23px;margin:10px 0 6px}.history-passport .home-metrics{margin-top:12px;padding-top:12px}.history-log-label{margin-top:16px}}
+.flight-home-button {position:absolute;left:32px;top:28px;z-index:5;width:34px;height:34px;min-height:34px;padding:0;border:1px solid #ffffff15;border-radius:11px;background:#11191de8;color:#dce7e8;font-size:21px;}
+.flight-home-button:hover {background:#263239;}
+@media(max-width:760px) {
+ .home-intro{top:22px;left:20px;max-width:calc(100vw - 40px)}
+ .home-intro h1{font-size:25px;margin-bottom:15px}
+ .home-journey{bottom:136px}
+ .home-shortcuts{width:calc(100vw - 40px);bottom:20px;grid-template-columns:1.5fr 1fr 1.1fr 1fr}
+ .home-shortcut{padding:14px 10px;min-height:86px;border-radius:0}
+ .home-shortcut-title{font-size:11px}.home-shortcut small{font-size:18px}.home-shortcut-icon{display:none}
+ #planner[data-stage="home"] .home-detail,#history:not([hidden]){top:76px;right:16px;bottom:16px;width:calc(100vw - 32px)}
+ .flight-home-button{left:16px;top:20px}
+}
+@media(prefers-reduced-motion:reduce){#home-radar .home-radar-ring{animation:none;opacity:.25;transform:scale(1.8)}.home-shortcut{transition:none}}
+
+#planner[data-stage="home"] .origin-sheet {position:fixed;left:50%;top:auto;bottom:32px;z-index:30;width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 64px);transform:translateX(-50%);overflow-y:auto;pointer-events:auto;}
+#planner[data-stage="home"] .origin-sheet .results {max-height:min(260px,40vh);}
+
+.home-shortcuts.has-active {grid-template-columns:1.65fr 1fr 1.2fr 1fr;}
+.home-shortcuts:not(.has-active) [data-home-page="mine"] {padding-left:0;}
+.home-shortcuts:not(.has-active) [data-home-page="mine"]::before {display:none;}
+
+#history .home-detail-heading h1 {font-size:25px;font-weight:600;margin:0;}
+.active-boarding::before,.active-boarding::after {content:"";position:absolute;top:58%;width:18px;height:18px;border-radius:50%;background:#25352f;}
+.active-boarding::before {left:-9px;}.active-boarding::after {right:-9px;}
+body:has(#home-detail:not([hidden])) #history-toggle {display:none;}
+
+.active-boarding header {position:static;inset:auto;z-index:auto;pointer-events:auto;}
+#home-detail .active-route {font-size:32px;margin:26px 0 22px;}
+#home-resume {align-items:center;}
+#home-dashboard[data-page="progress"] .home-detail {bottom:auto;max-height:calc(100% - 48px);}
+/* Observed world card sequence and arrival-led airport detail rows. */
+.world-card-deck {display:flex;gap:16px;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 8px 12px 0;scrollbar-width:thin;}
+.world-card-deck .world-achievement {flex:0 0 88%;height:350px;scroll-snap-align:start;background:#101112;border-radius:20px;}
+.world-record {padding:24px;}
+.world-record>h3 {position:relative;z-index:2;margin:0 0 8px;font-size:14px;font-weight:500;color:#999c9d;}
+.world-record>strong {position:relative;z-index:2;font-size:30px;letter-spacing:.02em;font-weight:600;}
+.world-record>.home-route-art {position:absolute;inset:74px 0 60px;width:100%;height:200px;opacity:.8;}
+.world-record-facts {position:absolute;bottom:24px;left:24px;right:24px;display:flex;justify-content:space-between;gap:16px;color:#999c9d;font-size:12px;}
+.world-record-facts strong {display:block;margin-top:7px;font-size:14px;color:#d3d4d2;font-weight:500;}
+.home-world-airport summary {padding:20px 0;align-items:flex-start;}
+.home-world-airport .airport-visit-copy {display:flex;flex-direction:column;gap:9px;min-width:0;}
+.home-world-airport summary .airport-visit-copy>strong {font-family:inherit;font-size:24px;letter-spacing:0;font-weight:600;}
+.home-world-airport summary small {font-size:13px;line-height:1.5;color:#8e9193;}
+.home-world-airport .airport-visit-copy>span {font-size:14px;color:#a9acad;}
+.home-world-airport summary b {font-size:30px;color:#767a7b;}
+@media(max-width:600px){.world-card-deck .world-achievement {height:320px;flex-basis:92%;}.world-record-facts {flex-wrap:wrap;}.world-record>strong {font-size:25px;}}

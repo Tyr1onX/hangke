@@ -74,6 +74,7 @@ label {
 #map {
   position: absolute;
   inset: 0;
+  background: #101518 url("./assets/stars.svg") center / cover no-repeat;
 }
 header {
   position: absolute;

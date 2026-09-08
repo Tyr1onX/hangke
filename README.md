@@ -59,9 +59,11 @@ npm run tauri build
 
 Windows 可执行文件在 `src-tauri/target/release/hangke.exe`，NSIS 安装包在 `src-tauri/target/release/bundle/nsis/`。当前安装包未代码签名。
 
+发布检查按以下顺序执行：先运行 `npm test`、`npx tsc --noEmit` 和隔离的 Vite 构建；再用临时 Tauri 配置把 `frontendDist` 与 `CARGO_TARGET_DIR` 指向隔离目录后生成 NSIS 包，避免覆盖现有 `dist` 和正式 target；最后运行 `npm run verify:windows-release <installer> <executable> <frontend-dist>`，记录当前 Git 提交、工作区状态、配置版本、架构、必要资源和安装包 SHA-256。真实 Windows 飞行中关闭 / 重启 / 到点恢复使用 `node scripts/verify-windows-lifecycle.cjs <executable> <runtime-root> <port>`；隔离安装、启动、历史恢复和卸载使用 `node scripts/verify-windows-installer.cjs <installer> <runtime-root> <port>`；单实例、重复启动和最小化窗口恢复使用 `npm run verify:windows-single-instance <executable> <runtime-root> <port>`。生产 UI 流程仍由 `verify-windows.cjs` 和 `verify-ui.cjs` 单独验收，不作为核心发布持久化门槛。
+
 MapLibre 使用 `maplibre-gl-worker.mjs?worker&url` 和 `setWorkerUrl`，由 Vite 输出完整 worker，不能改成普通 `?url`。[MapLibre 6 官方 ESM / Vite 配置](https://maplibre.org/maplibre-gl-js/docs/#esm)。
 
-生产页面自动验收：先执行 `npm run build`、`npm run preview`，另开终端执行 `node scripts/verify-ui.cjs`（需要本机 Edge）。真实 Windows 进程关闭 / 重启与到点降落验收：构建后执行 `node scripts/verify-windows.cjs`。验收使用独立临时浏览器资料目录，截图和结果写入被 Git 忽略的 `artifacts/`。短时降落验收会调整测试航班的开始时间，产品时长范围不变。
+生产页面自动验收：先执行 `npm run build`、`npm run preview`，另开终端执行 `node scripts/verify-ui.cjs`（需要本机 Edge）。`verify-windows.cjs` 保留生产 UI、地图、窗口尺寸和完整起飞流程验收；核心 Windows 进程关闭 / 重启与到点降落验收使用 `verify-windows-lifecycle.cjs`。验收使用独立临时浏览器资料目录，截图和结果写入被 Git 忽略的 `artifacts/`。短时降落验收会调整测试航班的开始时间，产品时长范围不变。
 
 ## 更新机场数据
 

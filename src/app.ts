@@ -1,4 +1,6 @@
 import { renderTicketCodes } from "./ticket-codes.ts";
+import { createHome } from "./home-view.ts";
+import { flightTotals, formatDistance, formatMinutes, type HomePage } from "./home.ts";
 import {
   airports,
   airport,
@@ -29,24 +31,21 @@ import {
 
 export function start() {
   const root = document.querySelector<HTMLDivElement>("#app")!;
-  root.innerHTML = `<header><button id="history-toggle" class="history-tool-button" type="button" aria-label="航迹" data-tooltip="航迹" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h10a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z"></path><path d="M8.5 8h7M8.5 12h3.5M8.5 16h7"></path><circle cx="15.5" cy="12" r="1.4"></circle></svg></button></header>
+  root.innerHTML = `
     <div id="notice" role="alert" hidden></div><div id="map-error" role="alert" hidden>地图加载失败 <button id="retry">重试</button></div>
     <form id="planner" class="preflight-console" autocomplete="off">
       <section id="home-stage" class="preflight-stage home-stage" aria-labelledby="home-stage-title">
-        <div class="home-airport-card">
-          <span class="home-kicker">当前机场</span>
-          <div class="home-airport"><strong id="home-origin-code">---</strong><span id="home-origin-city">尚未设置</span></div>
-          <button id="home-change-origin" class="text-action" type="button">修改出发机场</button>
-          <button id="start-preflight" class="primary home-primary" type="button">开始专注飞行</button>
-        </div>
+        <div id="home-dashboard"></div>
       </section>
 
       <section id="flight-stage" class="preflight-stage flight-stage" aria-labelledby="flight-stage-title" hidden>
         <div class="stage-heading compact-heading">
           <button id="flight-back" class="back-action" type="button" aria-label="返回主页">←</button>
-          <h1 id="flight-stage-title">选择航班</h1>
+          <h1 id="flight-stage-title" class="sr-only">选择航班</h1>
+          <div class="flight-tools"><button id="flight-random" type="button" aria-label="随机选择航班" title="随机">⇄</button><button id="flight-search-open" type="button" aria-label="搜索机场" title="搜索"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5"/><path d="m15 15 5 5"/></svg></button></div>
           <div class="draft-route" aria-label="当前航线"><strong id="draft-origin-code">---</strong><span aria-hidden="true">→</span><strong id="draft-destination-code">---</strong></div>
         </div>
+        <dialog id="flight-search-dialog" aria-labelledby="flight-search-title"><div class="search-heading"><h2 id="flight-search-title">搜索机场</h2><button id="flight-search-close" type="button" aria-label="关闭搜索">×</button></div><input id="flight-search" type="search" placeholder="机场代码或城市" aria-label="机场代码或城市" autocomplete="off"><div id="flight-search-results" aria-live="polite"></div></dialog>
         <div class="flight-controls">
           <button id="flight-origin" class="flight-origin" type="button">
             <span>出发机场</span><strong id="flight-origin-code">---</strong><small id="flight-origin-city">设置</small>
@@ -54,14 +53,14 @@ export function start() {
           <div class="duration-panel">
             <div class="duration-copy"><span>专注时长</span><strong id="duration-value">60 分钟</strong></div>
             <div class="duration-scale">
-              <div id="duration" class="duration-ruler" role="slider" tabindex="0" aria-label="专注时长" aria-valuemin="10" aria-valuemax="180" aria-valuenow="60" aria-valuetext="60 分钟"><div id="duration-track" class="duration-track" aria-hidden="true"></div></div>
+              <div id="duration" class="duration-ruler" role="slider" tabindex="0" aria-label="专注时长" aria-valuemin="30" aria-valuemax="180" aria-valuenow="60" aria-valuetext="60 分钟"><div id="duration-track" class="duration-track" aria-hidden="true"></div></div>
               <span class="duration-pointer" aria-hidden="true"></span>
             </div>
           </div>
         </div>
         <div class="carousel-heading"><span>目的机场</span></div>
         <div id="flight-carousel" class="flight-carousel" role="listbox" aria-label="选择目的机场"></div>
-        <div class="stage-action-row"><button id="choose-flight" class="primary" type="button" disabled>选择航班</button></div>
+        <div class="stage-action-row"><button id="choose-flight" class="primary" type="button" disabled>选择这趟航班</button></div>
       </section>
 
       <section id="seat-stage" class="preflight-stage seat-stage" aria-labelledby="seat-stage-title" hidden>
@@ -71,15 +70,12 @@ export function start() {
           <div id="seat-route" class="draft-route-label"></div>
         </div>
         <div id="seat-content" class="seat-content">
-          <div class="seat-cabin" aria-label="机舱座位图">
-            <div class="cabin-nose" aria-hidden="true"><span></span></div>
-            <div class="seat-columns" aria-hidden="true"><span>A</span><span>C</span><i></i><span>D</span><span>F</span></div>
-            <div id="seat-grid" class="seat-grid"></div>
+          <div class="seat-cabin" aria-label="客舱座位图">          <div class="cabin-nose" aria-hidden="true"><svg viewBox="0 0 480 330" preserveAspectRatio="none"><path class="fuselage" d="M1 330C1 195 135 1 240 1S479 195 479 330"/><path class="windshield" d="M100 145Q155 101 228 99V160Q143 164 74 206Z M252 99Q325 101 380 145L406 206Q337 164 252 160Z"/></svg></div><div class="seat-columns" aria-hidden="true"><span>A</span><span>C</span><i>过道</i><span>D</span><span>F</span></div><div id="seat-grid" class="seat-grid"></div>
           </div>
           <dialog id="focus-picker" class="focus-picker" aria-labelledby="focus-picker-label" aria-describedby="focus-seat-label" hidden>
             <button id="focus-picker-close" class="focus-picker-close" type="button" aria-label="关闭专注类型选择">×</button>
              <span class="focus-seat-label" id="focus-seat-label"></span>
-            <h2 id="focus-picker-label">选择专注类型</h2>
+            <h2 id="focus-picker-label">你想要在什么场景下专注？</h2>
             <div class="task-options" role="group" aria-label="选择专注类型">
               <button class="focus-option" type="button" data-task="学习" data-task-key="learn" aria-pressed="false"><span class="focus-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5c3.4-.8 5.8-.3 8 1.4v12c-2.2-1.7-4.6-2.2-8-1.4Z"></path><path d="M20 5.5c-3.4-.8-5.8-.3-8 1.4v12c2.2-1.7 4.6-2.2 8-1.4Z"></path></svg></span><span>学习</span></button>
               <button class="focus-option" type="button" data-task="代码" data-task-key="code" aria-pressed="false"><span class="focus-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2"></rect><path d="m7.5 9 2.5 2.5L7.5 14M12.5 14h4"></path></svg></span><span>代码</span></button>
@@ -138,7 +134,7 @@ export function start() {
           <span class="airplane-mode-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m3.5 14.5 7-2.4 3.7-7.1 2.2.7-1.8 7.3 5.7 3.5c1 .6 1.2 1.9.4 2.7-.5.5-1.2.6-1.8.3l-6.4-2.4-3.8 3.2-1.6-.6 1.7-4.3-5.3-.9Z"></path></svg></span>
           <div><strong>\u4fdd\u6301\u4e13\u6ce8</strong><p>Windows \u7248\u6682\u4e0d\u4f1a\u62e6\u622a\u5176\u4ed6\u5e94\u7528\uff0c\u98de\u884c\u4e0e\u8ba1\u65f6\u672c\u8eab\u4e0d\u53d7\u5f71\u54cd\u3002</p></div>
         </div>
-        <div class="boarding-action"><button id="boarding-action" class="primary" type="button">\u767b\u673a</button></div>
+        <div class="boarding-action"><button id="boarding-action" class="primary" type="button">开始登机</button></div>
       </section>
 
       <section id="ready-stage" class="preflight-stage ready-stage" aria-labelledby="ready-title" hidden>
@@ -161,9 +157,9 @@ export function start() {
         </div>
       </section>
     </form>
-    <section id="flight" hidden aria-label="飞行专注"><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button></div><div class="flight-pause-control"><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
+    <section id="flight" hidden aria-label="飞行专注"><button id="flight-home" class="flight-home-button" type="button" aria-label="&#x8fd4;&#x56de;&#x4e3b;&#x9875;">&#x2302;</button><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button></div><div class="flight-pause-control"><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
     <section id="landing" class="result" hidden aria-label="航程完成"><p id="landing-route"></p><h1>航程完成</h1><p id="landing-metrics"></p><p id="landing-task"></p><button id="done" class="primary">完成</button></section>
-    <aside id="history" hidden aria-label="航迹"><h1>航迹</h1><div id="history-list"></div><div id="details" hidden></div></aside>`;
+    <aside id="history" hidden aria-label="&#x6211;&#x7684;&#x822a;&#x8ff9;"><div class="home-detail-heading"><button id="history-back" class="back-action" type="button" aria-label="&#x8fd4;&#x56de;&#x4e3b;&#x9875;">&#x2190;</button><h1>&#x6211;&#x7684;</h1></div><div class="history-passport"><span>HANGKE / FLIGHT PROFILE</span><h2>我的飞行档案</h2><p id="history-profile"></p><div id="history-totals" class="home-metrics"></div></div><h2 class="history-log-label">FLIGHT LOG <span>已完成航程</span></h2><div id="history-list"></div><div id="details" hidden></div></aside>`;
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
     document.getElementById(id) as T;
   const show = (id: string, visible: boolean) => {
@@ -220,6 +216,7 @@ export function start() {
     show("map-error", true);
   }
   el("retry").onclick = () => window.location.reload();
+  el<HTMLButtonElement>("flight-home").onclick = () => { homeOverlay = true; preflightStage = "home"; homeUI?.setPage("home"); render(); };
   el("follow-plane").onclick = () => map?.focusPlane();
   el("route-view").onclick = () => map?.showRoute();
   let origin = airport(state.lastAirportIata),
@@ -234,6 +231,24 @@ export function start() {
     | "checkin"
     | "airplane"
     | "ready" = "home";
+  let homeUI: ReturnType<typeof createHome> | undefined;
+  let homeOverlay = false;
+  const homeRadar = document.createElement("div");
+  homeRadar.id = "home-radar";
+  homeRadar.hidden = true;
+  homeRadar.setAttribute("aria-hidden", "true");
+  homeRadar.innerHTML = '<span class="home-radar-ring"></span><span class="home-radar-ring"></span><span class="home-radar-ring"></span><span class="home-radar-dot"></span>';
+  document.getElementById("map")!.append(homeRadar);
+  const updateHomeRadar = () => {
+    const visible = !!origin && !state.activeFlight && !landed && !historyMode && preflightStage === "home" && homeUI?.getPage() === "home";
+    homeRadar.hidden = !visible;
+    if (visible && origin && map) {
+      const point = map.projectAirport(origin);
+      homeRadar.style.left = `${point.x}px`;
+      homeRadar.style.top = `${point.y}px`;
+    }
+  };
+  map?.onCameraChange(updateHomeRadar);
   let checkinStarted = false;
   let checkinCompleted = false;
   let checkinProgress = 0;
@@ -244,7 +259,7 @@ export function start() {
   let boardingAt = new Date();
   const durationRuler = el<HTMLDivElement>("duration"),
     durationTrack = el<HTMLDivElement>("duration-track");
-  const durationMin = 10,
+  const durationMin = 30,
     durationMax = 180,
     durationStep = 5,
     durationTickWidth = 24;
@@ -397,6 +412,49 @@ export function start() {
 
   const flightCarousel = el<HTMLDivElement>("flight-carousel");
   let destinationMatches: ReachableAirport[] = [];
+  const destinationSearch = el<HTMLDialogElement>("flight-search-dialog");
+  const selectCandidate = (a: Airport) => {
+    if (!destinationMatches.some(x => x.airport.iata === a.iata)) return;
+    if (destination?.iata !== a.iata) { selectedSeat = ""; selectedTask = ""; }
+    destination = a;
+    refreshDestinations(true);
+  };
+  const renderDestinationSearch = () => {
+    const list = el("flight-search-results");
+    list.replaceChildren();
+    const query = el<HTMLInputElement>("flight-search").value.trim();
+    const results = query ? search(query) : destinationMatches.map(x => x.airport);
+    for (const a of results) {
+      const legal = destinationMatches.some(x => x.airport.iata === a.iata);
+      const button = document.createElement("button");
+      button.type = "button"; button.disabled = !legal;
+      button.textContent = `${a.iata} · ${airportPlanningLabel(a)}${legal ? "" : " · 非当前时长候选"}`;
+      button.onclick = () => { selectCandidate(a); destinationSearch.close(); };
+      list.append(button);
+    }
+    if (!results.length) list.textContent = "未找到本地机场";
+  };
+  el("flight-random").onclick = () => {
+    if (destinationMatches.length) selectCandidate(destinationMatches[Math.floor(Math.random() * destinationMatches.length)].airport);
+  };
+  el("flight-search-open").onclick = () => {
+    el<HTMLInputElement>("flight-search").value = "";
+    renderDestinationSearch(); destinationSearch.showModal();
+    el("flight-search").focus();
+  };
+  el("flight-search-close").onclick = () => destinationSearch.close();
+  // Escape must dismiss the search overlay in both Chromium and WebView2.
+  destinationSearch.oncancel = (event) => {
+    event.preventDefault();
+    if (destinationSearch.open) destinationSearch.close();
+  };
+  destinationSearch.onkeydown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      if (destinationSearch.open) destinationSearch.close();
+    }
+  };
+  el("flight-search").oninput = renderDestinationSearch;
   const refreshDestinations = (scrollToSelected = false) => {
     if (durationRefreshTimer !== undefined) {
       window.clearTimeout(durationRefreshTimer);
@@ -411,6 +469,7 @@ export function start() {
     )
       destination = undefined;
 
+    el<HTMLButtonElement>("flight-random").disabled = !destinationMatches.length;
     flightCarousel.replaceChildren();
     if (!origin) {
       const empty = document.createElement("p");
@@ -442,10 +501,10 @@ export function start() {
         city.className = "flight-card-city";
         city.textContent = airportPlanningLabel(a);
         card.append(code, city);
-        if (selected) {
+        {
           const distanceLabel = document.createElement("small");
           distanceLabel.className = "flight-card-distance";
-          distanceLabel.textContent = `${Math.round(distanceKm).toLocaleString()} km`;
+          distanceLabel.textContent = `${durationMinutes} min · ${Math.round(distanceKm).toLocaleString()} km`;
           card.append(distanceLabel);
         }
         card.onclick = () => {
@@ -516,8 +575,9 @@ export function start() {
     show("origin-confirm", false);
     show("origin-sheet", false);
     refreshDestinations();
-    if (preflightStage === "home") map?.select(origin);
+    if (preflightStage === "home" && origin) map?.locate(origin);
     refreshPlanner();
+    if (preflightStage === "home") homeUI?.render(state, origin, Date.now());
     el<HTMLButtonElement>(
       preflightStage === "flight" ? "flight-origin" : "home-change-origin",
     ).focus();
@@ -599,7 +659,8 @@ export function start() {
       const button = document.createElement("button");
       button.type = "button";
       button.dataset.seat = `${rowNumber}${column}`;
-      button.textContent = `${rowNumber}${column}`;
+      button.textContent = column;
+      button.dataset.position = column === "A" || column === "F" ? "window" : "aisle";
       button.setAttribute("aria-label", `座位 ${rowNumber}${column}`);
       button.setAttribute("aria-pressed", "false");
       seatRow.append(button);
@@ -672,17 +733,19 @@ export function start() {
   let ticketFitFrame: number | null = null;
   const fitTickets = () => {
     for (const { viewport, frame, ticket } of ticketLayouts) {
-      const availableWidth = viewport.clientWidth;
-      const availableHeight = viewport.clientHeight;
+      const inset = getComputedStyle(viewport);
+      const availableWidth = viewport.clientWidth - parseFloat(inset.paddingLeft) - parseFloat(inset.paddingRight);
+      const availableHeight = viewport.clientHeight - parseFloat(inset.paddingTop) - parseFloat(inset.paddingBottom);
       if (availableWidth <= 0 || availableHeight <= 0) continue;
       const naturalWidth = Math.max(560, Math.min(820, availableWidth - 4));
       frame.style.width = `${naturalWidth}px`;
       const naturalHeight = ticket.offsetHeight;
       if (!naturalHeight) continue;
-      frame.style.height = `${naturalHeight}px`;
+      const lowerAllowance = ticket.id === "checkin-ticket" ? 190 : 0;
+      frame.style.height = `${naturalHeight + lowerAllowance}px`;
       const scale = Math.min(1,
         (availableWidth - 4) / (naturalWidth + 64),
-        (availableHeight - 4) / (naturalHeight + 96));
+        (availableHeight - 4) / (naturalHeight + lowerAllowance + 4));
       frame.style.setProperty("--ticket-scale", String(Math.max(0.1, scale)));
     }
   };
@@ -699,6 +762,42 @@ export function start() {
     ticketResizeObserver.observe(ticket);
   }
 
+  let presentation: Animation | undefined;
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const cancelPresentation = () => {
+    const pending = presentation;
+    presentation = undefined;
+    pending?.cancel();
+    delete el("planner").dataset.motion;
+    el("planner").removeAttribute("aria-busy");
+    el("seat-content").inert = false;
+    el<HTMLButtonElement>("next-step").disabled = false;
+    el<HTMLButtonElement>("go-takeoff").disabled = false;
+  };
+  const animatePresentation = async (element: HTMLElement, frames: Keyframe[], duration: number, easing: string, name: string) => {
+    if (reducedMotion.matches) return true;
+    el("planner").dataset.motion = name;
+    el("planner").setAttribute("aria-busy", "true");
+    const animation = element.animate(frames, { duration, easing, fill: "both" });
+    presentation = animation;
+    try { await animation.finished; } catch { return false; }
+    if (presentation !== animation) return false;
+    presentation = undefined;
+    animation.cancel();
+    delete el("planner").dataset.motion;
+    el("planner").removeAttribute("aria-busy");
+    return true;
+  };
+  reducedMotion.addEventListener("change", () => { if (reducedMotion.matches) presentation?.finish(); });
+  document.addEventListener("keydown", event => {
+    if (event.key !== "Escape" || !presentation) return;
+    event.preventDefault();
+    const stage = preflightStage;
+    cancelPresentation();
+    if (stage === "boarding") preflightStage = "seat";
+    else if (stage === "ready") preflightStage = "checkin";
+    renderPreflight();
+  });
   const renderPreflight = () => {
     el("planner").dataset.stage = preflightStage;
     show("home-stage", preflightStage === "home");
@@ -706,7 +805,8 @@ export function start() {
     show("seat-stage", preflightStage === "seat");
     show("boarding-stage", preflightStage === "boarding");
     show("checkin-stage", preflightStage === "checkin");
-    show("airplane-stage", preflightStage === "airplane");
+    show("airplane-stage", preflightStage === "airplane" || (preflightStage === "checkin" && checkinCompleted));
+    el("planner").dataset.checkedIn = String(checkinCompleted);
     show("ready-stage", preflightStage === "ready");
     for (const button of seatButtons)
       button.setAttribute(
@@ -719,11 +819,14 @@ export function start() {
         String(button.dataset.task === selectedTask),
       );
     for (const seat of seatButtons) {
+      seat.replaceChildren();
       seat.removeAttribute("data-focus");
       seat.removeAttribute("data-focus-key");
     }
     if (selectedSeat && selectedTask) {
       const activeSeat = seatButtons.find((seat) => seat.dataset.seat === selectedSeat);
+      const glyph = taskButtons.find(item => item.dataset.task === selectedTask)?.querySelector("svg");
+      if (glyph && activeSeat) activeSeat.append(glyph.cloneNode(true));
       activeSeat?.setAttribute("data-focus", selectedTask);
       activeSeat?.setAttribute("data-focus-key",
         taskButtons.find((item) => item.dataset.task === selectedTask)?.dataset.taskKey || "");
@@ -732,13 +835,21 @@ export function start() {
     const checkinTicket = el("checkin-ticket");
     checkinTicket.classList.toggle("is-tearing", checkinStarted && !checkinCompleted);
     checkinTicket.classList.toggle("is-torn", checkinCompleted);
-    show("checkin-continue", checkinCompleted && preflightStage === "checkin");
+    show("checkin-continue", false);
     el("checkin-instruction").textContent = checkinCompleted
       ? "\u503c\u673a\u5b8c\u6210"
       : "\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u7968\u6839";
     refreshPlanner();
     scheduleTicketFit();
-    if (preflightStage === "home") map?.select(origin);
+    if (preflightStage === "home") homeUI?.render(state, origin, Date.now());
+    updateHomeRadar();
+    if (state.activeFlight) return;
+    if (preflightStage === "home") {
+      if (homeUI?.getPage() === "roam") return;
+      if (homeUI?.getPage() === "world") map?.showWorld();
+      else if (homeUI?.getPage() === "home") map?.select(origin);
+      else map?.select(origin);
+    }
     else if (preflightStage === "flight")
       map?.plan(
         origin,
@@ -965,12 +1076,13 @@ export function start() {
   });
 
   el<HTMLFormElement>("planner").onsubmit = (event) => event.preventDefault();
-  el<HTMLButtonElement>("home-change-origin").onclick = openOriginSheet;
   el<HTMLButtonElement>("flight-origin").onclick = openOriginSheet;
   el<HTMLButtonElement>("close-origin").onclick = closeOriginSheet;
   el<HTMLButtonElement>("origin-cancel").onclick = resetOriginCandidate;
   el<HTMLButtonElement>("origin-apply").onclick = applyOrigin;
-  el<HTMLButtonElement>("start-preflight").onclick = () => {
+  const beginPreflight = () => {
+    if (state.activeFlight) { homeOverlay = false; render(); return; }
+    homeUI?.setPage("home");
     if (!origin) {
       openOriginSheet();
       return;
@@ -984,17 +1096,21 @@ export function start() {
     stopDurationMotion();
     preflightStage = "home";
     renderPreflight();
+    if (origin) map?.locate(origin);
   };
   el<HTMLButtonElement>("seat-back").onclick = () => {
+    cancelPresentation();
     preflightStage = "flight";
     refreshDestinations(true);
     renderPreflight();
   };
   el<HTMLButtonElement>("boarding-back").onclick = () => {
+    cancelPresentation();
     preflightStage = "seat";
     renderPreflight();
   };
   el<HTMLButtonElement>("checkin-back").onclick = () => {
+    cancelPresentation();
     resetCheckin();
     preflightStage = "boarding";
     renderPreflight();
@@ -1015,17 +1131,28 @@ export function start() {
     renderPreflight();
     seatButtons[0]?.focus({ preventScroll: true });
   };
-  el<HTMLButtonElement>("confirm-seat").onclick = () => {
-    if (!origin || !destination || !selectedSeat || !selectedTask) return;
+  el<HTMLButtonElement>("confirm-seat").onclick = async () => {
+    if (presentation || preflightStage !== "seat" || !origin || !destination || !selectedSeat || !selectedTask) return;
+    closeFocusPicker(false);
+    const cabin = el("seat-content").querySelector<HTMLElement>(".seat-cabin")!;
+    el("seat-content").inert = true;
+    const travel = cabin.getBoundingClientRect().bottom - el("seat-content").getBoundingClientRect().top + 24;
+    if (!await animatePresentation(cabin, [{ transform: "translateY(0)" }, { transform: `translateY(-${travel}px)` }], 1050, "cubic-bezier(.55,.05,.85,.55)", "cabin-exit")) return;
+    el("seat-content").inert = false;
     preflightStage = "boarding";
     boardingAt = new Date();
     resetCheckin();
     map?.select(origin, destination);
     renderPreflight();
-    el("next-step").focus();
+    fitTickets();
+    const next = el<HTMLButtonElement>("next-step");
+    next.disabled = true;
+    if (!await animatePresentation(el("boarding-ticket"), [{ transform: "translateY(calc(100% + 12px))" }, { transform: "translateY(0)" }], 3000, "linear", "printing")) return;
+    next.disabled = false;
+    next.focus({ preventScroll: true });
   };
   el<HTMLButtonElement>("next-step").onclick = () => {
-    if (!origin || !destination || !selectedSeat || !selectedTask) return;
+    if (presentation || preflightStage !== "boarding" || !origin || !destination || !selectedSeat || !selectedTask) return;
     preflightStage = "checkin";
     resetCheckin();
     checkinStarted = true;
@@ -1114,14 +1241,18 @@ export function start() {
       completeCheckin();
     }
   };
-  el<HTMLButtonElement>("boarding-action").onclick = () => {
-    if (!checkinCompleted) return;
+  el<HTMLButtonElement>("boarding-action").onclick = async () => {
+    if (presentation || !checkinCompleted || (preflightStage !== "checkin" && preflightStage !== "airplane")) return;
     preflightStage = "ready";
     renderPreflight();
-    el("go-takeoff").focus();
+    const go = el<HTMLButtonElement>("go-takeoff");
+    go.disabled = true;
+    if (!await animatePresentation(el("ready-stage"), [{ opacity: 0, filter: "blur(16px)", offset: 0 }, { opacity: 0, filter: "blur(16px)", offset: .3 }, { opacity: 1, filter: "blur(0px)", offset: 1 }], 1100, "cubic-bezier(.2,.7,.2,1)", "boarding")) return;
+    go.disabled = false;
+    go.focus({ preventScroll: true });
   };
   el<HTMLButtonElement>("go-takeoff").onclick = () => {
-    if (!origin || !destination || !selectedTask || !validDuration() || !storageAvailable)
+    if (presentation || preflightStage !== "ready" || state.activeFlight || !origin || !destination || !selectedTask || !validDuration() || !storageAvailable)
       return;
     const startedAt = Date.now();
     const durationSeconds = durationMinutes * 60;
@@ -1175,14 +1306,11 @@ export function start() {
     }
   };
   const render = () => {
-    show("planner", !state.activeFlight && !landed && !historyMode);
-    show("flight", !!state.activeFlight);
+    if (homeUI?.getPage() === "roam" && (landed || (state.activeFlight && !homeOverlay))) homeUI.setPage("home");
+    show("planner", (!state.activeFlight || homeOverlay) && !landed && !historyMode);
+    show("flight", !!state.activeFlight && !homeOverlay);
     show("landing", !!landed);
     show("history", historyMode);
-    show("history-toggle", !state.activeFlight && !landed);
-    const historyToggle = el<HTMLButtonElement>("history-toggle");
-    historyToggle.setAttribute("aria-pressed", String(historyMode));
-    historyToggle.setAttribute("aria-label", historyMode ? "关闭航迹" : "航迹");
     map?.setHistory(state.flights);
     if (state.activeFlight) {
       const f = state.activeFlight;
@@ -1211,9 +1339,10 @@ export function start() {
       if (a) map?.land(a);
       el("done").focus();
     }
-    if (!state.activeFlight && !landed && !historyMode) renderPreflight();
+    if ((!state.activeFlight || homeOverlay) && !landed && !historyMode) renderPreflight();
   };
   const tick = () => {
+    if (homeUI && preflightStage === "home") homeUI.render(state, origin, Date.now());
     const f = state.activeFlight;
     if (!f) return;
     const now = Date.now();
@@ -1224,6 +1353,7 @@ export function start() {
         landed = next.flights.find((x) => x.id === f.id);
         origin = airport(next.lastAirportIata);
         destination = undefined;
+        homeOverlay = false;
         setOriginInput(origin);
         render();
       }
@@ -1270,6 +1400,8 @@ export function start() {
     if (!state.activeFlight) return;
     if (commit(cancel(state))) {
       stopPlaneAnimation();
+      homeOverlay = false;
+      homeUI?.setPage("home");
       preflightStage = "home";
       selectedSeat = "";
       selectedTask = "";
@@ -1304,6 +1436,8 @@ export function start() {
   endButton.onclick = (e) => e.preventDefault();
   el("done").onclick = () => {
     landed = undefined;
+    homeOverlay = false;
+    homeUI?.setPage("home");
     preflightStage = "home";
     selectedSeat = "";
     selectedTask = "";
@@ -1312,14 +1446,23 @@ export function start() {
     render();
     el("start-preflight").focus();
   };
-  el("history-toggle").onclick = () => {
+  const toggleHistory = () => {
+    if (homeUI?.getPage() === "roam") homeUI.setPage("world");
     historyMode = !historyMode;
     show("details", false);
     render();
-    if (historyMode) map?.select();
-    else if (preflightStage === "flight") refreshDestinations();
-    else if (preflightStage === "boarding" && origin && destination)
+    if (historyMode && !state.activeFlight) map?.select();
+    else if (!historyMode && !state.activeFlight && preflightStage === "home") {
+      if (homeUI?.getPage() === "world") map?.showWorld();
+      else if (origin) map?.locate(origin);
+    }
+    else if (!historyMode && preflightStage === "flight") refreshDestinations();
+    else if (!historyMode && preflightStage === "boarding" && origin && destination)
       map?.select(origin, destination);
+    const totals = flightTotals(state.flights);
+    el("history-totals").innerHTML = `<div><span>${"\u822a\u7a0b"}</span><strong>${totals.flights}</strong></div><div><span>${"\u4e13\u6ce8"}</span><strong>${formatMinutes(totals.minutes)}</strong></div><div><span>${"\u8ddd\u79bb"}</span><strong>${formatDistance(totals.distanceKm)}</strong></div>`;
+    const first = state.flights.length ? Math.min(...state.flights.map(f=>f.completedAt)) : null;
+    el("history-profile").textContent = first ? `首航 ${new Date(first).toLocaleDateString("zh-CN")} · 最近抵达 ${state.lastAirportIata || "—"}` : "从第一趟航程，开始你的飞行档案";
     const list = el("history-list");
     list.replaceChildren();
     if (!state.flights.length) list.textContent = "还没有完成的航程";
@@ -1334,7 +1477,7 @@ export function start() {
       button.onclick = () => {
         const a = airport(f.originIata),
           b = airport(f.destinationIata);
-        map?.select(a, b, true);
+        if (!state.activeFlight) map?.select(a, b, true);
         el("details").replaceChildren();
         for (const text of [
           `${a ? airportPlanningLabel(a) : f.originIata} → ${b ? airportPlanningLabel(b) : f.destinationIata}`,
@@ -1351,10 +1494,31 @@ export function start() {
       list.append(button);
     });
   };
+  el<HTMLButtonElement>("history-back").onclick = toggleHistory;
   if (!airports.length) notice("机场数据无法加载，暂时无法起飞。");
+  homeUI = createHome(el("home-dashboard"), {
+    start: beginPreflight,
+    changeOrigin: openOriginSheet,
+    mine: toggleHistory,
+    resume: () => { homeOverlay = false; render(); },
+    page: (page: HomePage) => {
+      if (page === "roam") { updateHomeRadar(); return; }
+      if (state.activeFlight) { updateHomeRadar(); return; }
+      if (page === "world") map?.showWorld();
+      else if (page === "home" && origin) map?.locate(origin);
+      else if (page !== "home") map?.select(origin);
+      updateHomeRadar();
+    },
+    airport: (a) => map?.locate(a),
+    roam: (active) => { if (active) map?.startRoam(); else map?.stopRoam(); },
+    roamControl: (action) => map?.roamControl(action),
+    roamAirport: (a) => map?.roamAirport(a),
+  });
+  map?.setWorldAirportHandler(a => homeUI?.showRoamAirport(a));
   setOriginInput(origin);
   refreshDestinations();
   render();
+  if (!state.activeFlight && origin) map?.locate(origin);
   tick();
   setInterval(tick, 250);
   window.addEventListener("focus", tick);
