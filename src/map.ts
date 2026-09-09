@@ -18,7 +18,7 @@ import type { CompletedFlight } from "./state.ts";
 setWorkerUrl(workerUrl);
 const style = "https://tiles.openfreemap.org/styles/dark";
 const focusZoom = 11.5;
-const cameraDuration = 650;
+const cameraDuration = 1100;
 const focusSettleDuration = 90;
 const airportCandidateImageId = "hangke-airport-candidate";
 const airportSelectedImageId = "hangke-airport-selected";
@@ -135,6 +135,7 @@ export class FlightMap {
   private airportSelectHandler: ((airport: Airport) => void) | undefined;
   private arrival: Airport | undefined;
   private reserveRight = false;
+  private paperPadding: {top:number;bottom:number;left:number;right:number}|null = null;
   private roaming = false;
   private worldAirportHandler: ((airport: Airport) => void) | undefined;
   private roamCamera: {center: [number, number]; zoom: number; bearing: number; pitch: number; padding: ReturnType<Map["getPadding"]>; view: FlightView} | undefined;
@@ -143,7 +144,9 @@ export class FlightMap {
   private planePosition: Coordinate | undefined;
   private planeHeading = 0;
   private trailProgress = 0;
+  private trailOverlay: SVGSVGElement;
   private focusTransitioning = false;
+  private cameraGeneration = 0;
   private planeOverlay = false;
   private planeElement: HTMLDivElement;
   private planeIcon: SVGElement;
@@ -227,7 +230,14 @@ export class FlightMap {
     const el = document.createElement("div");
     el.className = "plane plane-overlay";
     el.setAttribute("aria-label", "飞机");
-    el.innerHTML = "<svg class=\"plane-icon\" viewBox=\"0 0 48 48\" width=\"48\" height=\"48\" aria-hidden=\"true\"><path fill=\"#e8f1f4\" stroke=\"#627985\" stroke-width=\".65\" d=\"M24 2C22.5 2 21.5 4 21 7L20 18 3 27 2 33 20 28 20 38 14 42 14 45 24 43 34 45 34 42 28 38 28 28 46 33 45 27 28 18 27 7C26.5 4 25.5 2 24 2Z\"/><path fill=\"#b6cbd4\" stroke=\"#627985\" stroke-width=\".55\" d=\"M14 24h3l1 7-2 3h-2l-1-3zM31 24h3l1 7-1 3h-2l-2-3z\"/><path fill=\"none\" stroke=\"#819aa6\" stroke-width=\".55\" stroke-linecap=\"round\" d=\"M24 4v36M20 18 6 30M28 18 42 30M20 38 15 43M28 38 33 43\"/><path fill=\"#526d7b\" d=\"M22 8Q24 6 26 8v3h-4z\"/></svg>";
+    el.innerHTML = `<svg class="plane-icon" viewBox="0 0 48 48" width="48" height="48" aria-hidden="true"><path fill="#e8f1f4" stroke="#627985" stroke-width=".65" d="${planeBodyPath}"/><path fill="#b6cbd4" stroke="#627985" stroke-width=".55" d="${planeEnginePath}"/><path fill="none" stroke="#819aa6" stroke-width=".55" stroke-linecap="round" d="${planePanelPath}"/><path fill="#526d7b" d="M22 8Q24 6 26 8v3h-4z"/></svg>`;
+    const tail = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    tail.classList.add("flight-contrail");
+    tail.setAttribute("aria-hidden", "true");
+    tail.innerHTML = '<defs><linearGradient id="contrail-fade" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="white" stop-opacity="0"/><stop offset=".4" stop-color="white" stop-opacity=".24"/><stop offset="1" stop-color="white" stop-opacity=".78"/></linearGradient></defs><path fill="none" stroke="url(#contrail-fade)" stroke-width="1.5" stroke-linecap="round"/>';
+    this.trailOverlay = tail;
+    this.map.getContainer().appendChild(tail);
+    this.map.on("move", () => this.renderTrail());
     this.planeElement = el;
     this.planeIcon = el.querySelector("svg")!;
     this.loadingTimer = setTimeout(() => onError(true), 25000);
@@ -254,11 +264,6 @@ export class FlightMap {
         { pixelRatio: 2 },
       );
       this.map.addImage(planeImageId, planeImage(), { pixelRatio: 2 });
-      this.map.addSource("trail", {
-        type: "geojson",
-        lineMetrics: true,
-        data: { type: "FeatureCollection", features: [] },
-      });
       for (const id of ["history", "current", "range", "airports", "plane"]) {
         this.map.addSource(id, {
           type: "geojson",
@@ -293,21 +298,6 @@ export class FlightMap {
           },
         });
       }
-      this.map.addLayer({
-        id: "trail",
-        type: "line",
-        source: "trail",
-        layout: { "line-cap": "round", "line-join": "round" },
-        paint: {
-          "line-width": 1.35,
-          "line-opacity": 0.86,
-          "line-gradient": ["interpolate", ["linear"], ["line-progress"],
-            0, "rgba(255,255,255,0)",
-            0.2, "rgba(255,255,255,0.14)",
-            0.65, "rgba(255,255,255,0.45)",
-            1, "rgba(255,255,255,0.85)"],
-        },
-      });
       this.map.addLayer({
         id: "airports",
         type: "symbol",
@@ -441,6 +431,7 @@ export class FlightMap {
     destination: Airport | undefined,
     rangeKm: number,
   ) {
+    this.paperPadding = null;
     this.reserveRight = false;
     this.arrival = undefined;
     this.planningOrigin = origin;
@@ -454,7 +445,11 @@ export class FlightMap {
     if (destination) this.framePlanningRoute(origin, destination);
     else this.framePlanning(origin, candidates);
   }
-  select(a?: Airport, b?: Airport, reserveRight = false) {
+  select(a?: Airport, b?: Airport, reserveRight = false, frameCamera = true) {
+    const wasPaper = this.paperPadding !== null;
+    this.paperPadding = null;
+    if (wasPaper && !this.flightActive && this.ready && !(a && b))
+      this.map.jumpTo({padding:{top:0,bottom:0,left:0,right:0}});
     this.planningOrigin = undefined;
     this.planningCandidates = [];
     this.planningDestination = undefined;
@@ -464,14 +459,29 @@ export class FlightMap {
     this.selected = a && b ? [a, b] : null;
     this.endpoints = [a, b].filter((item): item is Airport => !!item);
     this.render();
-    if (a && b && this.ready) this.frame(a, b);
+    if (a && b && this.ready && frameCamera) this.frame(a, b);
+  }
+  // Paper composition is an explicit presentation viewport, not a DOM heuristic.
+  selectPaper(a: Airport, b: Airport, rect: DOMRectReadOnly, duration = 0) {
+    this.select(a,b,false,false);
+    this.framePaper(a,b,rect,duration);
+  }
+  framePaper(a: Airport, b: Airport, rect: DOMRectReadOnly, duration = 0) {
+    if (this.flightActive) return;
+    const container=this.map.getContainer().getBoundingClientRect();
+    const height=container.height, width=container.width;
+    const paperTop=Math.max(80,Math.min(height-64,rect.top-container.top-12));
+    const top=Math.min(42,paperTop/3);
+    const side=Math.min(70,Math.max(8,(width-160)/2));
+    this.paperPadding={top,bottom:Math.max(0,height-paperTop),left:side,right:side};
+    if(this.ready)this.frame(a,b,duration);
   }
   // Home-only camera helpers. They do not alter the flight clock or map sources.
   locate(a: Airport) {
     this.map.stop();
     this.select(a);
     this.map.setPadding({top:0,bottom:0,left:0,right:0});
-    this.map.easeTo({center: coordinates(a), zoom: 5, duration: this.motionDuration()});
+    this.map.easeTo({center: coordinates(a), zoom: 5, padding:{top:0,bottom:0,left:0,right:0}, duration: this.motionDuration()});
   }
   showWorld() {
     this.select();
@@ -617,31 +627,29 @@ export class FlightMap {
     this.renderPlane();
   }
   private renderTrail() {
-    if (!this.ready) return;
-    const features: Array<{ type: "Feature"; properties: Record<string, never>; geometry: { type: "LineString"; coordinates: Coordinate[] } }> = [];
-    if (this.flightActive && this.selected && this.planePosition && this.trailProgress > 0) {
-      const [a, b] = this.selected;
-      const start = coordinates(a), end = coordinates(b);
-      const routeKm = distance(start, end);
-      if (routeKm > 0) {
-        // Keep the visual tail short in screen space, not a fixed fraction of the journey.
-        const pixelKm = 40075.016686 * Math.max(0.01, Math.cos(this.planePosition[1] * Math.PI / 180)) / (512 * 2 ** this.map.getZoom());
-        const first = Math.max(0, this.trailProgress - 88 * pixelKm / routeKm);
-        if (first < this.trailProgress) {
-          const points: Coordinate[] = [];
-          for (let i = 0; i <= 8; i++) {
-            const point = interpolate(start, end, first + (this.trailProgress - first) * i / 8);
-            if (points.length) {
-              while (point[0] - points[i - 1][0] > 180) point[0] -= 360;
-              while (point[0] - points[i - 1][0] < -180) point[0] += 360;
-            }
-            points.push(point);
-          }
-          features.push({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: points } });
-        }
-      }
+    const path = this.trailOverlay.querySelector("path")!;
+    if (!this.ready || !this.flightActive || !this.planePosition || this.trailProgress <= 0) {
+      path.setAttribute("d", "");
+      return;
     }
-    (this.map.getSource("trail") as GeoJSONSource).setData({ type: "FeatureCollection", features });
+    // Project the current heading through the map so rotation, zoom and camera
+    // transitions share the same coordinates as the aircraft in either view.
+    const [lon, lat] = this.planePosition;
+    const heading = this.planeHeading * Math.PI / 180;
+    const tip = this.map.project(this.planePosition);
+    const ahead = this.map.project([lon + Math.sin(heading) * .001 / Math.max(.01,Math.cos(lat*Math.PI/180)), lat + Math.cos(heading)*.001]);
+    const length = Math.hypot(ahead.x-tip.x,ahead.y-tip.y);
+    if (length < .00001) { path.setAttribute("d", ""); return; }
+    const dx=(ahead.x-tip.x)/length, dy=(ahead.y-tip.y)/length;
+    const tailLength=140*Math.min(1,this.trailProgress*1000);
+    const near={x:tip.x-dx*20,y:tip.y-dy*20};
+    const far={x:near.x-dx*tailLength,y:near.y-dy*tailLength};
+    const gradient=this.trailOverlay.querySelector("linearGradient")!;
+    for(const [key,value] of Object.entries({x1:far.x,y1:far.y,x2:near.x,y2:near.y})) gradient.setAttribute(key,String(value));
+    path.setAttribute("d",[-1,1].map(side=>{
+      const x=-dy*4*side,y=dx*4*side;
+      return `M${far.x+x},${far.y+y} L${near.x+x},${near.y+y}`;
+    }).join(" "));
   }
   private renderPlane() {
     if (!this.ready) return;
@@ -664,17 +672,20 @@ export class FlightMap {
     this.view = view;
     this.onViewChange(view);
   }
+  private cancelCameraTransition() {
+    // Invalidate older moveend callbacks before stop() can synchronously fire them.
+    this.cameraGeneration++;
+    this.focusTransitioning = false;
+    this.map.stop();
+  }
   private pauseAutomaticView() {
     if (!this.flightActive || this.view === "manual") return;
-    this.focusTransitioning = false;
+    this.cancelCameraTransition();
     this.showPlaneSymbol();
-    this.map.stop();
     this.setView("manual");
   }
   private motionDuration() {
-    return matchMedia("(prefers-reduced-motion: reduce)").matches
-      ? 0
-      : cameraDuration;
+    return matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : cameraDuration;
   }
   private showPlaneSymbol() {
     if (this.planeOverlay) this.planeElement.remove();
@@ -688,54 +699,46 @@ export class FlightMap {
       this.planeOverlay = true;
     }
   }
-  private settleFocusTransition() {
-    if (!this.focusTransitioning || this.view !== "focus" || !this.planePosition)
-      return;
+  private settleFocusTransition(generation: number) {
+    if (generation !== this.cameraGeneration || !this.focusTransitioning || this.view !== "focus" || !this.planePosition) return;
     this.map.once("moveend", () => {
-      if (this.focusTransitioning && this.view === "focus")
-        this.finishFocusTransition();
+      if (generation === this.cameraGeneration && this.focusTransitioning && this.view === "focus")
+        this.finishFocusTransition(generation);
     });
     this.map.easeTo({
-      center: this.planePosition,
-      zoom: focusZoom,
-      bearing: 0,
-      pitch: 0,
+      center: this.planePosition, zoom: focusZoom,
+      padding: {top:0,bottom:0,left:0,right:0}, bearing:0, pitch:0,
       duration: focusSettleDuration,
     });
   }
-  private finishFocusTransition() {
-    if (this.view !== "focus" || !this.planePosition || !this.ready) return;
+  private finishFocusTransition(generation: number) {
+    if (generation !== this.cameraGeneration || this.view !== "focus" || !this.planePosition || !this.ready) return;
     this.focusTransitioning = false;
+    // The last small correction uses the current wall-clock position, never the old target.
     this.map.jumpTo({
-      center: this.planePosition,
-      zoom: focusZoom,
-      bearing: 0,
-      pitch: 0,
+      center: this.planePosition, zoom: focusZoom,
+      padding: {top:0,bottom:0,left:0,right:0}, bearing:0, pitch:0,
     });
     this.showPlaneOverlay();
   }
   focusPlane() {
+    if (!this.planePosition || !this.ready) { this.setView("focus"); return; }
+    this.cancelCameraTransition();
+    const generation = this.cameraGeneration;
     this.setView("focus");
-    if (!this.planePosition || !this.ready) return;
-    this.focusTransitioning = false;
-    this.map.stop();
     this.showPlaneSymbol();
     const duration = this.motionDuration();
-    if (!duration) {
-      this.finishFocusTransition();
-      return;
-    }
+    if (!duration) { this.finishFocusTransition(generation); return; }
     this.focusTransitioning = true;
     this.map.once("moveend", () => {
-      if (this.focusTransitioning && this.view === "focus")
-        this.settleFocusTransition();
+      if (generation === this.cameraGeneration && this.focusTransitioning && this.view === "focus")
+        this.settleFocusTransition(generation);
     });
     this.map.easeTo({
-      center: this.planePosition,
-      zoom: focusZoom,
-      bearing: 0,
-      pitch: 0,
+      center: this.planePosition, zoom: focusZoom,
+      padding: {top:0,bottom:0,left:0,right:0}, bearing:0, pitch:0,
       duration,
+      easing:(t:number)=>t*t*(3-2*t),
     });
   }
   private planningPadding() {
@@ -789,8 +792,7 @@ export class FlightMap {
     });
   }
   showRoute() {
-    this.focusTransitioning = false;
-    this.map.stop();
+    this.cancelCameraTransition();
     this.showPlaneSymbol();
     this.setView("route");
     if (this.selected && this.ready)
@@ -798,16 +800,14 @@ export class FlightMap {
   }
   frame(a: Airport, b: Airport, duration = 0) {
     const bounds = new LngLatBounds();
-    route(coordinates(a), coordinates(b)).forEach((p) => bounds.extend(p));
-    this.map.fitBounds(bounds, {
-      padding: {
-        top: 64,
-        bottom: 96,
-        left: 56,
-        right: this.reserveRight ? 350 : 56,
-      },
-      duration,
-      linear: true,
+    route(coordinates(a), coordinates(b)).forEach(p => bounds.extend(p));
+    const width=this.map.getContainer().clientWidth;
+    const padding=this.paperPadding && !this.flightActive ? this.paperPadding : {
+      top:64,bottom:Math.max(96,this.map.getContainer().clientHeight*.34),left:56,right:this.reserveRight?Math.min(350,Math.max(56,width-160)):56,
+    };
+    this.map.fitBounds(bounds,{
+      padding,duration,linear:true,
+      easing:(t:number)=>t*t*(3-2*t),
     });
   }
   fly(a: Airport, b: Airport, t: number) {
@@ -833,6 +833,8 @@ export class FlightMap {
     }
   }
   hidePlane() {
+    this.cancelCameraTransition();
+    this.paperPadding = null;
     this.flightActive = false;
     this.trailProgress = 0;
     this.planePosition = undefined;
@@ -849,6 +851,7 @@ export class FlightMap {
     this.map.easeTo({
       center: coordinates(a),
       zoom: 5,
+      padding:{top:0,bottom:0,left:0,right:0},
       duration: matchMedia("(prefers-reduced-motion: reduce)").matches
         ? 0
         : 250,

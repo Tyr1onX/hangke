@@ -22,7 +22,16 @@
     ],
     "security": {
       "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://tiles.openfreemap.org; connect-src 'self' https://tiles.openfreemap.org; worker-src 'self' blob:; font-src 'self'"
-    }
+    },
+    "withGlobalTauri": true
   },
-  "bundle": { "active": true, "targets": ["nsis"], "icon": ["icons/icon.ico"] }
+  "bundle": {
+    "active": true,
+    "targets": [
+      "nsis"
+    ],
+    "icon": [
+      "icons/icon.ico"
+    ]
+  }
 }

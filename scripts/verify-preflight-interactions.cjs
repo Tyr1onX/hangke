@@ -9,7 +9,7 @@ async function setDuration(page, value) {
   await page.locator(`#duration-track [data-minutes="${value}"]`).evaluate(el => el.click());
   await page.waitForFunction(value => {
     const el = document.querySelector("#duration");
-    return el.dataset.motion === "idle" && el.getAttribute("aria-valuenow") === String(value) && Math.abs(el.scrollLeft - (value - 10) / 5 * 24) < .5;
+    return el.dataset.motion === "idle" && el.getAttribute("aria-valuenow") === String(value) && Math.abs(el.scrollLeft - (value - 30) / 5 * 24) < .5;
   }, value, { timeout: 10000 });
 }
 async function origin(page, code) {
@@ -80,7 +80,7 @@ async function run() {
     await page.locator("#flight-stage").waitFor({ state: "visible" });
     await setDuration(page, 60);
     const original = await position(page);
-    assert.equal(original.left, 240);
+    assert.equal(original.left, 144);
     const ruler = await page.locator("#duration").boundingBox();
     await page.mouse.move(ruler.x + ruler.width / 2, ruler.y + ruler.height / 2);
     await page.mouse.wheel(0, 160);
@@ -101,7 +101,7 @@ async function run() {
     const coast = (await position(page)).left;
     assert.ok(coast > released + 1, `release must preserve drag velocity: ${released} -> ${coast}`);
     await page.waitForFunction(() => document.querySelector("#duration").dataset.motion === "idle", null, { timeout: 10000 });
-    await setDuration(page, 10);
+    await setDuration(page, 30);
     await page.mouse.move(ruler.x + ruler.width / 2, ruler.y + ruler.height / 2);
     await page.mouse.down();
     await page.mouse.move(ruler.x + ruler.width / 2 + 260, ruler.y + ruler.height / 2, { steps: 8 });
@@ -111,7 +111,7 @@ async function run() {
     await page.waitForFunction(() => document.querySelector("#duration").dataset.motion === "idle", null, { timeout: 10000 });
     assert.equal((await position(page)).left, 0);
     await setDuration(page, 180);
-    assert.equal((await position(page)).left, 816);
+    assert.equal((await position(page)).left, 720);
     await setDuration(page, 60);
     const first = page.locator("#flight-carousel .flight-card").first();
     await first.click();
@@ -125,12 +125,12 @@ async function run() {
     await page.locator("#seat-stage").waitFor({ state: "visible" });
     assert.equal(await page.locator("[data-seat]").count(), 88);
     const cabin = page.locator(".seat-cabin");
-    const bounds = await cabin.evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
+    const bounds = await page.locator("#seat-content").evaluate(el => ({ client: el.clientHeight, scroll: el.scrollHeight }));
     assert.ok(bounds.scroll > bounds.client + 400, JSON.stringify(bounds));
     assert.equal(await page.locator("#focus-picker").isVisible(), false);
     const cabinBefore = await cabin.boundingBox();
     await page.locator('[data-seat="22F"]').click();
-    assert.ok(await cabin.evaluate(el => el.scrollTop > 0), "rear rows must be reachable by scrolling");
+    assert.ok(await page.locator("#seat-content").evaluate(el => el.scrollTop > 0), "rear rows must be reachable by scrolling");
     await page.locator("#focus-picker").waitFor({ state: "visible" });
     await page.waitForFunction(() => getComputedStyle(document.querySelector('[data-seat="22F"]')).backgroundColor === "rgb(64, 111, 155)");
     const pendingSeatColor = await page.locator('[data-seat="22F"]').evaluate(el => getComputedStyle(el).backgroundColor);
@@ -166,6 +166,7 @@ async function run() {
     assert.ok(qr1.startsWith("HANGKE|1|CGQ|"));
     assert.ok(qr1.includes("|22F|60|"));
     assert.ok(await page.locator("#boarding-barcode").evaluate(el => el.width > 100 && el.height > 20));
+    await page.waitForFunction(() => !document.querySelector("#planner").dataset.motion, null, { timeout: 6000 });
     await assertTicketInBounds(page, "boarding");
     if (!desktop) {
       for (const size of [{width:1111,height:754},{width:720,height:480},{width:900,height:600}]) {
@@ -174,6 +175,11 @@ async function run() {
         await assertTicketInBounds(page, "boarding");
       }
     }
+    const paperSignature = prefix => page.evaluate(prefix => {
+      const ticket=document.getElementById(`${prefix}-ticket`),main=ticket.querySelector(".boarding-ticket-main"),route=ticket.querySelector(".boarding-route strong"),details=ticket.querySelector(".boarding-details");
+      return {width:ticket.offsetWidth,height:ticket.offsetHeight,background:getComputedStyle(ticket).backgroundColor,main:getComputedStyle(main).backgroundImage,routeFont:getComputedStyle(route).fontSize,detailsGrid:getComputedStyle(details).gridTemplateColumns,fields:["origin-code","origin-city","destination-code","destination-city","duration","seat","distance","time","date"].map(id=>document.getElementById(`${prefix}-${id}`).textContent)};
+    },prefix);
+    const issuedPaper=await paperSignature("boarding");
     await page.screenshot({ path: `artifacts/${desktop ? "windows" : "browser"}-boarding-pass.png` });
     await page.locator("#next-step").click();
     await page.locator("#checkin-stage").waitFor({ state: "visible" });
@@ -182,20 +188,22 @@ async function run() {
     assert.equal(await page.locator("#checkin-date").innerText(), boardingDate);
     assert.equal((await state(page)).activeFlight, null);
     await assertTicketInBounds(page, "checkin");
+    assert.deepEqual(await paperSignature("checkin"),issuedPaper,"issue and check-in must preserve paper dimensions, material and every field");
     const stub = page.locator("#checkin-stub");
     const handle = page.locator("#checkin-tear-handle");
     const ticket = page.locator("#checkin-ticket");
     assert.equal(await stub.getAttribute("aria-orientation"), "horizontal");
     const appearance = await ticket.evaluate(el => ({
       background: getComputedStyle(el).backgroundColor,
-      map: getComputedStyle(el.querySelector(".ticket-world-map")).backgroundImage,
+      map: getComputedStyle(el.querySelector(".boarding-ticket-main")).backgroundImage,
       hint: getComputedStyle(el.querySelector(".tear-handle svg")).animationName,
     }));
-    assert.equal(appearance.background, "rgb(36, 41, 44)");
+    assert.equal(appearance.background, issuedPaper.background);
     assert.ok(appearance.map.includes("ticket-world"));
     assert.equal(appearance.hint, "ticket-tear-hint");
     const box = await stub.boundingBox();
-    assert.ok(box.width > 300 && box.height > 90, JSON.stringify(box));
+    const paperScale=Number(await page.locator("#checkin-ticket-frame").evaluate(el=>el.style.getPropertyValue("--ticket-scale")));
+    assert.ok(Math.abs(box.width-560*paperScale)<2 && Math.abs(box.height-88*paperScale)<2, JSON.stringify({box,paperScale}));
     const start = await handle.boundingBox();
     const x = start.x + start.width / 2, y = start.y + start.height / 2;
     await page.mouse.move(x, y); await page.mouse.down();
@@ -222,12 +230,12 @@ async function run() {
     await assertTicketInBounds(page, "checkin");
     assert.equal((await state(page)).activeFlight, null);
     assert.equal(await page.locator("#checkin-stage").isVisible(), true);
-    await page.locator("#checkin-continue").waitFor({ state: "visible" });
-    assert.equal(await page.locator("#checkin-continue").innerText(), "\u7ee7\u7eed\u767b\u673a");
-    await page.locator("#checkin-continue").click();
     await page.locator("#airplane-stage").waitFor({ state: "visible" });
+    await page.locator("#boarding-action").waitFor({ state: "visible" });
     await page.locator("#boarding-action").click();
     await page.locator("#ready-stage").waitFor({ state: "visible" });
+    await page.waitForFunction(() => !document.querySelector("#planner").dataset.motion, null, { timeout: 5000 });
+    await page.locator("#go-takeoff").waitFor({ state: "visible" });
     assert.equal(await page.locator("#ready-title").innerText(), "\u98de\u884c\u5373\u5c06\u5f00\u59cb");
     assert.equal(await page.locator("#go-takeoff").innerText(), "\u51fa\u53d1\uff01");
     assert.equal((await state(page)).activeFlight, null);

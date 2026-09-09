@@ -1,23 +1,4 @@
 /* Preflight presentation: one decision at a time. */
-#planner #seat-content,
-#planner #seat-content:has(#focus-picker.is-visible) {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  justify-items: center;
-  align-items: stretch;
-  min-height: 0;
-  padding: 18px 24px;
-  gap: 0;
-  overflow: visible;
-}
-#planner #seat-content .seat-cabin,
-#planner #seat-content:has(#focus-picker.is-visible) .seat-cabin {
-  grid-column: 1;
-  grid-row: 1;
-  transform: none;
-  width: min(438px, 100%);
-  max-width: 100%;
-}
 #planner #focus-picker {
   position: fixed;
   inset: 0;
@@ -61,106 +42,6 @@
 #planner #focus-picker .focus-seat-label { margin-right: 38px; }
 #planner #focus-picker .task-options { grid-template-columns: 1fr; }
 
-/* The card and its detached stub must both remain inside the window. */
-#planner.preflight-console[data-stage="boarding"],
-#planner.preflight-console[data-stage="checkin"] {
-  top: 16px;
-  bottom: 16px;
-  left: 50%;
-  right: auto;
-  display: flex;
-  flex-direction: column;
-  width: min(920px, calc(100vw - 32px));
-  height: calc(100vh - 32px);
-  max-height: none;
-  padding: 0;
-  overflow: hidden;
-  transform: translateX(-50%);
-}
-#planner #boarding-stage,
-#planner #checkin-stage {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-height: 0;
-  overflow: hidden;
-}
-#planner #boarding-stage .stage-heading,
-#planner #checkin-stage .stage-heading { flex: 0 0 auto; }
-#planner #boarding-stage .ticket-viewport,
-#planner #checkin-stage .ticket-viewport {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  min-width: 0;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: 10px 18px;
-}
-#planner .ticket-fit {
-  position: relative;
-  flex: none;
-  width: 820px;
-  transform: scale(var(--ticket-scale, 1));
-  transform-origin: center center;
-}
-#planner .ticket-fit > .boarding-pass {
-  width: 100%;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-}
-#planner #boarding-stage .boarding-action,
-#planner #checkin-stage .boarding-action {
-  flex: 0 0 auto;
-  margin: 0;
-  padding: 12px 18px 16px;
-}
-#planner #checkin-stage .checkin-actions {
-  display: flex;
-  min-height: 72px;
-  align-items: center;
-  justify-content: flex-end;
-}
-#planner #checkin-stage .checkin-instruction {
-  flex: 0 0 auto;
-  margin: 12px 18px 0;
-  font-size: 11px;
-}
-/* The cut travels along the seam; the whole stub does not slide offscreen. */
-#planner .boarding-pass-checkin .boarding-stub-detachable,
-#planner .boarding-pass-checkin .boarding-stub-detachable:active:not(:disabled) {
-  transform: translate3d(0, var(--tear-drop, 0px), 0) rotate(var(--tear-angle, 0deg));
-  transform-origin: 50% 0;
-}
-/* No paper fragment is allowed to disappear below the clipping edge. */
-#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable,
-#planner .boarding-pass-checkin.is-torn .boarding-stub-detachable:active:not(:disabled) {
-  transform: translate3d(12px, 24px, 0) rotate(-2deg);
-  opacity: 1;
-  pointer-events: none;
-  transition: transform 600ms cubic-bezier(.2,.75,.25,1), opacity 500ms ease;
-}
-#planner .boarding-pass-checkin.is-torn .tear-handle { opacity: 0; pointer-events: none; }
-@media (max-width: 760px) {
-  #planner.preflight-console[data-stage="boarding"],
-  #planner.preflight-console[data-stage="checkin"] {
-    left: 16px;
-    right: 16px;
-    width: auto;
-    transform: none;
-  }
-  #planner #seat-content { padding: 12px 14px; }
-  #planner #focus-picker { padding: 16px; }
-  #planner #boarding-stage .ticket-viewport,
-  #planner #checkin-stage .ticket-viewport { padding: 8px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  #planner #focus-picker { transition: none; transform: none; }
-  #planner .boarding-pass-checkin.is-torn .boarding-stub-detachable { transition: none; }
-  #planner #focus-picker::backdrop { backdrop-filter: none; }
-}
 
 /* Map-first preflight. The toolbar is outside the space reserved by the map. */
 #planner.preflight-console[data-stage="flight"] {left:50%;right:auto;bottom:22px;width:min(760px,calc(100vw - 48px));transform:translateX(-50%);border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible;}
@@ -194,115 +75,100 @@
 #flight-search-results {display:grid;gap:4px;margin-top:12px;font-size:13px;}
 #flight-search-results button {padding:12px 4px;text-align:left;border:0;border-bottom:1px solid #ffffff12;background:transparent;color:#ddd;}
 #flight-search-results button:disabled {color:#818484;}
-/* The nose and the straight cabin share a continuous 480-unit fuselage. */
-#planner.preflight-console[data-stage="seat"] {top:22px;bottom:22px;left:50%;right:auto;width:min(680px,calc(100vw - 40px));transform:translateX(-50%);max-height:none;overflow:hidden;background:transparent;border:0;box-shadow:none;}
-#seat-stage {height:100%;display:flex;flex-direction:column;}
+
+/* One cabin, one paper geometry, one camera-safe stage layout. */
+#planner .preflight-stage[hidden],#planner #airplane-stage[hidden] {display:none!important;}
+/* Whole map opacity also covers attribution controls with explicit visibility. */
+body[data-hangke-scene="seat"] #map,
+body[data-hangke-scene="boarding"] #map,
+body[data-hangke-scene="checkin"] #map,
+body[data-hangke-scene="airplane"] #map,
+body[data-hangke-scene="ready"] #map {opacity:0;visibility:hidden;pointer-events:none;}
+body[data-hangke-scene="boarding"],body[data-hangke-scene="checkin"] {background:#101416;}
+#planner.preflight-console[data-stage="seat"] {top:16px;bottom:16px;left:50%;right:auto;width:min(680px,calc(100vw - 32px));max-height:none;overflow:hidden;transform:translateX(-50%);background:transparent;border:0;box-shadow:none;}
+#seat-stage {height:100%;display:flex;flex-direction:column;min-height:0;}
 #seat-stage>.stage-heading {flex:none;border:0;padding:0 0 12px;align-items:center;}
 #seat-stage h1 {font-size:16px;font-weight:500;}
 #seat-stage .back-action {border-radius:50%;background:#252627;border:1px solid #ffffff22;}
-#planner #seat-content {display:block;flex:1;min-height:0;padding:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;}
-#planner #seat-content .seat-cabin {position:relative;display:block;width:min(480px,100%);height:auto;min-height:0;max-height:none;margin:0 auto;padding:0 24px 26px;border:0;border-radius:0;background:transparent;box-shadow:none;overflow:visible;}
-#planner .seat-cabin::before {content:"";position:absolute;top:329px;bottom:0;left:0;right:0;z-index:-1;background:#232323;border:1px solid #494949;border-top:0;border-radius:0 0 12px 12px;}
+#planner #seat-content,#planner #seat-content:has(#focus-picker.is-visible) {display:block;flex:1;min-height:0;padding:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;}
+#planner #seat-content .seat-cabin,#planner #seat-content:has(#focus-picker.is-visible) .seat-cabin {position:relative;display:block;width:min(480px,100%);max-width:100%;height:auto;min-height:0;max-height:none;margin:0 auto;padding:0;background:transparent;border:0;border-radius:0;box-shadow:none;overflow:visible;isolation:isolate;transform:none;}
+#planner .seat-cabin::before {content:none;}
+#planner .cabin-shell {position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;overflow:visible;}
+#planner .cabin-shell .fuselage {fill:#232323;stroke:#494949;stroke-width:1.2;vector-effect:non-scaling-stroke;}
+#planner .cabin-interior {position:relative;z-index:1;padding:0 24px;}
+#planner .cabin-tail {height:150px;pointer-events:none;}
 #planner .cabin-nose {height:330px;margin:0 -24px;display:block;}
 #planner .cabin-nose::before {content:none;}
 #planner .cabin-nose svg {display:block;width:100%;height:100%;fill:none;stroke:none;}
-#planner .cabin-nose .fuselage {fill:#232323;stroke:#494949;stroke-width:1.2;}
+#planner .cabin-nose .fuselage {fill:none;stroke:none;}
 #planner .cabin-nose .windshield {fill:#3a3a3a;}
 #planner .seat-columns,#planner .seat-row {display:grid;grid-template-columns:1fr 1fr 64px 1fr 1fr;gap:10px;}
 #planner .seat-columns {position:static;margin:0 0 20px;padding:12px 0;background:transparent;border:0;color:#96969b;font:20px Consolas,"Cascadia Code",monospace;}
 #planner .seat-columns i {font-size:0;}
 #planner .seat-grid {gap:16px;}
 #planner .seat-row-number {grid-column:3;grid-row:1;display:grid;place-items:center;min-height:64px;border:0;color:#a2a2a9;font:21px Consolas,"Cascadia Code",monospace;}
-#planner .seat-row button {width:100%;max-width:none;height:64px;min-height:64px;padding:0;border:1px solid #ffffff05;border-radius:12px;background:#393939;color:#aaa;box-shadow:none;transform:none;}
+#planner .seat-row button {width:100%;max-width:none;height:64px;min-height:64px;padding:0;border:1px solid #ffffff05;border-radius:12px;background:#393939;color:#aaa;box-shadow:none;transform:none;font-size:0;}
 #planner .seat-row button::before,#planner .seat-row button::after {content:none;}
 #planner .seat-row button:hover {background:#484846;}
-#planner .seat-row button[aria-pressed="true"] {background:#d6c171;color:#202119;border-color:#e7d28a;box-shadow:none;}
+#planner .seat-row button[aria-pressed="true"] {background:#406f9b;color:#fff;border-color:#7094b5;box-shadow:none;}
+#planner .seat-row button[data-focus-key] {background:var(--seat-focus-color,#6d5898);color:#fff;}
+#planner .seat-row button:focus-visible {outline:2px solid #e0c974;outline-offset:3px;}
+#planner .seat-row button svg {width:27px;height:27px;stroke:currentColor;stroke-width:1.6;fill:none;}
 #seat-stage .seat-action-row {flex:none;padding:10px 0 0;border:0;background:transparent;}
 #planner #focus-picker {width:min(460px,calc(100vw - 40px));padding:24px;border:1px solid #ffffff20;border-radius:18px;background:#333434;box-shadow:0 14px 40px #0005;}
 #focus-picker-label {font-size:20px;margin:5px 0 20px;line-height:1.4;}
 #focus-seat-label {font-size:14px;color:#aaa;}
 #planner #focus-picker .task-options {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:0;}
-#planner #focus-picker .focus-option {--focus-color:#aca3d0;display:flex;gap:10px;justify-content:center;min-height:52px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--focus-color) 40%,transparent);border-radius:28px;background:color-mix(in srgb,var(--focus-color) 10%,transparent);color:var(--focus-color);box-shadow:none;font-size:16px;}
+#planner #focus-picker .focus-option {--focus-color:#aca3d0;display:flex;gap:10px;justify-content:center;min-height:52px;padding:8px 12px;border:1px solid color-mix(in srgb,var(--focus-color) 40%,transparent);border-radius:28px;background:color-mix(in srgb,var(--focus-color) 10%,transparent);color:var(--focus-color);box-shadow:none;font-size:16px;font-weight:500;}
 #planner #focus-picker [data-task-key="learn"] {--focus-color:#b4ce92;}
 #planner #focus-picker [data-task-key="code"] {--focus-color:#c99ab9;}
 #planner #focus-picker [data-task-key="read"] {--focus-color:#8fcacb;}
 #planner #focus-picker [data-task-key="write"] {--focus-color:#94c9b7;}
 #planner #focus-picker .focus-option[aria-pressed="true"] {background:color-mix(in srgb,var(--focus-color) 26%,transparent);border-color:var(--focus-color);}
-#planner #focus-picker .focus-icon {width:26px;height:26px;background:none;border:0;color:inherit;}
-/* Ticket entrance changes only compositor properties; draft timing is untouched. */
-#planner.preflight-console[data-stage="boarding"] {top:16vh;bottom:20px;width:min(600px,calc(100vw - 40px));height:auto;background:transparent;border:0;box-shadow:none;}
-#boarding-stage>.stage-heading {padding:0 18px 8px;border:0;}
-#boarding-stage h1 {font-size:16px;font-weight:500;}
-#boarding-route-label {display:none;}
-#boarding-stage .ticket-fit {width:520px;}
-#planner #boarding-ticket {background:#232323;border-radius:16px;box-shadow:none;grid-template-rows:auto 22px 108px;}
-#planner #boarding-ticket .boarding-route {border:0;padding-bottom:20px;}
-#planner #boarding-ticket .boarding-route strong {font-size:48px;letter-spacing:.02em;}
-#planner #boarding-ticket .boarding-flight-time strong {font-size:14px;}
-#planner #boarding-ticket .boarding-details {grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
-#planner #boarding-ticket .boarding-details>div:nth-child(even) {text-align:right;}
-#planner #boarding-ticket .boarding-details span {font-size:13px;}
-#planner #boarding-ticket .boarding-details strong {font-size:20px;font-family:Consolas,"Cascadia Code",monospace;}
-#boarding-stage:not([hidden]) #boarding-ticket {animation:ticket-issue 260ms cubic-bezier(.2,.7,.2,1) both;}
-@keyframes ticket-issue {from {transform:translateY(28px);opacity:0;}to {transform:translateY(0);opacity:1;}}
-@media(max-width:600px) {#planner .seat-columns,#planner .seat-row {grid-template-columns:1fr 1fr 46px 1fr 1fr;gap:8px;}#planner .seat-row button {height:58px;min-height:58px;}#flight-stage .flight-carousel {justify-content:flex-start;}#planner #focus-picker {padding:20px;}#focus-picker-label {font-size:18px;}}
-@media(prefers-reduced-motion:reduce) {#boarding-stage:not([hidden]) #boarding-ticket {animation:none;}#focus-picker {transition:none!important;}}
-#planner #boarding-stage,#planner #checkin-stage {width:100%;align-self:stretch;}
-#planner #focus-picker .focus-option {border-radius:28px!important;background:color-mix(in srgb,var(--focus-color) 10%,transparent)!important;border-color:color-mix(in srgb,var(--focus-color) 40%,transparent)!important;font-weight:500;}
-#planner #focus-picker .focus-option[aria-pressed="true"] {background:color-mix(in srgb,var(--focus-color) 26%,transparent)!important;}
 #planner #focus-picker .focus-option::after {content:none;}
+#planner #focus-picker .focus-icon {width:26px;height:26px;background:none;border:0;color:inherit;}
 #planner #focus-picker .focus-icon svg {width:26px;height:26px;}
 #planner #focus-picker .focus-seat-label {padding:0;border:0;background:none;color:#b4b4ba;font-size:15px;font-weight:400;letter-spacing:0;}
 #planner #focus-picker h2 {margin:6px 0 22px;font-weight:550;}
-#planner .seat-row button {font-size:0;}
-#planner .seat-row button:focus-visible {outline:2px solid #e0c974;outline-offset:3px;}
-#planner #seat-content:has(#focus-picker.is-visible) {display:block;padding:0;overflow-y:auto;}
-#planner #seat-content:has(#focus-picker.is-visible) .seat-cabin {width:min(480px,100%);}
-#planner #boarding-stage .boarding-action {display:flex;justify-content:center;}
-#boarding-stage #next-step {width:min(400px,100%);}
-#planner #boarding-ticket .boarding-ticket-stub {background:#232323;}
-#flight-stage .flight-card-distance {font-size:10px;white-space:nowrap;}
-/* Reference motion: whole cabin, fixed paper outlet, retained detachable stub. */
 #planner[data-motion="cabin-exit"] #seat-content {overflow:hidden;}
 #planner[data-motion="cabin-exit"] .seat-action-row {visibility:hidden;}
-#planner[data-motion="cabin-exit"] #seat-stage>.stage-heading {background:transparent;}
-#planner .seat-row button svg {width:27px;height:27px;stroke:currentColor;stroke-width:1.6;fill:none;}
-#planner #boarding-stage #boarding-ticket {animation:none;}
-#planner[data-motion="printing"] #boarding-ticket-frame {overflow:hidden;}
-#planner[data-motion="printing"] #boarding-ticket-frame::after {content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#090909;border-top:1px solid #5b5b5740;pointer-events:none;}
-#planner[data-motion="printing"] #boarding-stage .boarding-action {visibility:hidden;}
-#planner[data-stage="boarding"] #boarding-ticket-viewport {align-items:flex-end;padding-bottom:14px;}
-#planner[data-stage="boarding"] #boarding-ticket-frame {transform-origin:center bottom;}
-#planner.preflight-console[data-stage="checkin"] {top:14vh;bottom:24px;height:auto;width:min(600px,calc(100vw - 40px));background:transparent;border:0;box-shadow:none;}
-#planner[data-stage="checkin"]::before {content:"";position:fixed;inset:-100vh -100vw;background:#080909a8;z-index:-1;pointer-events:none;}
-#planner #checkin-ticket {background:#232323;box-shadow:none;}
-#planner #checkin-ticket .boarding-ticket-main {background:#232323;}
-#planner #checkin-ticket .boarding-route {border:0;}
-#planner #checkin-ticket .boarding-route strong {font-size:48px;letter-spacing:.02em;}
-#planner #checkin-ticket .boarding-flight-time strong {font-size:14px;}
-#planner #checkin-ticket .boarding-details {grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
-#planner #checkin-ticket .boarding-details>div:nth-child(even) {text-align:right;}
-#planner #checkin-ticket .boarding-details span {font-size:13px;}
-#planner #checkin-ticket .boarding-details strong {font:600 20px Consolas,"Cascadia Code",monospace;}
-#planner #checkin-ticket .boarding-ticket-stub {background:#232323;}
+/* The two stages reserve identical paper space and a common footer. */
+#planner.preflight-console[data-stage="boarding"],#planner.preflight-console[data-stage="checkin"],#planner.preflight-console[data-stage="airplane"] {top:24px;bottom:16px;left:50%;right:auto;width:min(600px,calc(100vw - 40px));height:calc(100vh - 40px);max-height:none;padding:0;overflow:visible;transform:translateX(-50%);background:transparent;border:0;box-shadow:none;backdrop-filter:none;}
+#planner #boarding-stage,#planner #checkin-stage {display:grid;grid-template-rows:44px 24px minmax(0,1fr) 146px;width:100%;height:100%;min-height:0;overflow:visible;}
+#planner #boarding-stage>.stage-heading,#planner #checkin-stage>.stage-heading {grid-row:1;padding:0 18px;border:0;align-items:center;}
+#planner #boarding-stage h1,#planner #checkin-stage h1 {font-size:16px;font-weight:500;}
+#boarding-route-label,#checkin-route {display:none;}
+#planner #boarding-stage .ticket-stage-spacer,#planner #checkin-stage .checkin-instruction {grid-row:2;min-height:0;margin:0;padding:0 18px;display:flex;align-items:center;justify-content:center;font-size:11px;color:#a4a4a5;}
+#planner #boarding-stage .ticket-viewport,#planner #checkin-stage .ticket-viewport {grid-row:3;position:relative;display:flex;align-items:flex-end;justify-content:center;min-width:0;min-height:0;padding:10px 18px;overflow:hidden;}
+#planner .ticket-fit {position:relative;flex:none;width:var(--ticket-layout-width,560px);height:var(--ticket-layout-height,0px);zoom:1;transform:none;overflow:visible;}
+#planner .ticket-fit>.boarding-pass {position:relative;width:560px;min-width:560px;min-height:0;margin:0;transform:scale(var(--ticket-scale,1));transform-origin:top left;}
+#planner #boarding-stage .boarding-action {position:absolute;z-index:6;left:0;right:0;bottom:calc(146px + var(--outlet-edge,160px) - 56px);height:56px;display:flex;justify-content:center;margin:0;padding:0;}
+#boarding-stage #next-step {position:relative;width:var(--outlet-width,560px);height:56px;background:#eef0e9;color:#171b1c;transition:background 220ms ease,color 220ms ease;}
+#planner[data-motion="printing"] #next-step {background:transparent;color:transparent;opacity:1;border-color:transparent;box-shadow:none;}
+#planner[data-motion="printing"] #next-step::before {content:"";position:absolute;top:0;left:0;right:0;height:7px;border-radius:2px;background:#050606;border-top:1px solid #737875;box-shadow:0 3px 0 #24292a;}
+#planner #checkin-stage .checkin-footer {grid-row:4;min-height:0;display:flex;flex-direction:column;justify-content:flex-start;padding:0 18px;}
+#planner #checkin-stage .checkin-actions {display:none;}
+#planner #checkin-stage #airplane-stage {width:100%;min-height:0;margin:0;padding:8px 0 0;border:0;background:none;box-shadow:none;}
+#planner #checkin-stage #airplane-stage>.stage-heading {display:none;}
+#planner #checkin-stage .airplane-mode-card {display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:0;border:0;background:none;box-shadow:none;min-height:0;}
+#planner #checkin-stage .airplane-mode-icon {width:34px;height:34px;flex:none;background:#d7ac51;border-radius:50%;color:#171917;}
+#planner #checkin-stage .airplane-mode-icon svg {width:23px;height:23px;}
+#planner #checkin-stage .airplane-mode-card strong {font-size:14px;}
+#planner #checkin-stage .airplane-mode-card p {margin:3px 0 0;font-size:11px;color:#a2a4a3;}
+#planner #checkin-stage #airplane-stage .boarding-action {padding:0;margin:0;display:flex;justify-content:center;}
+#planner #checkin-stage #boarding-action {width:100%;}
+
+#planner[data-motion="printing"] #boarding-ticket-viewport {clip-path:inset(0 0 var(--paper-edge,0px) 0);}
+#planner[data-stage="checkin"] #checkin-ticket-viewport {overflow:visible;}
+#planner[data-stage="checkin"] .checkin-instruction {visibility:visible;}
+#planner[data-stage="checkin"][data-checked-in="true"] .checkin-instruction {visibility:hidden;}
 #planner #checkin-ticket .boarding-stub-detachable {transition:transform 900ms cubic-bezier(.25,.5,.3,1);transform-origin:85% 0;}
 #planner #checkin-ticket.dragging .boarding-stub-detachable {transition:none;}
-#planner #checkin-ticket.is-torn .boarding-stub-detachable {transform:translate3d(2px,48px,0) rotate(-10deg);opacity:1;}
-#planner[data-stage="checkin"] .checkin-instruction {color:#a4a4a5;}
-#planner[data-stage="checkin"][data-checked-in="true"] .checkin-instruction {visibility:hidden;}
-#planner[data-stage="checkin"] #checkin-stage .checkin-actions {display:none;}
-#planner[data-stage="checkin"] #airplane-stage {flex:none;width:100%;padding:12px 18px 0;animation:mode-reveal 1150ms both;}
-#planner[data-stage="checkin"] #airplane-stage>.stage-heading {display:none;}
-#planner[data-stage="checkin"] .airplane-mode-card {display:flex;align-items:center;gap:12px;margin:0 0 12px;padding:0;border:0;background:none;box-shadow:none;min-height:0;}
-#planner[data-stage="checkin"] .airplane-mode-icon {width:34px;height:34px;flex:none;background:#d7ac51;border-radius:50%;color:#171917;}
-#planner[data-stage="checkin"] .airplane-mode-icon svg {width:23px;height:23px;}
-#planner[data-stage="checkin"] .airplane-mode-card strong {font-size:14px;}
-#planner[data-stage="checkin"] .airplane-mode-card p {margin:3px 0 0;font-size:11px;color:#a2a4a3;}
-#planner[data-stage="checkin"] #airplane-stage .boarding-action {padding:0;display:flex;justify-content:center;}
-#planner[data-stage="checkin"] #boarding-action {width:100%;}
+#planner #checkin-ticket.is-torn .boarding-stub-detachable {transform:perspective(800px) translate3d(8px,40px,0) rotateX(6deg) rotate(-12deg);opacity:1;pointer-events:none;}
+#planner[data-stage="checkin"] #airplane-stage {animation:mode-reveal 1150ms both;}
 @keyframes mode-reveal {0%,75% {opacity:0;transform:translateY(10px);}100% {opacity:1;transform:translateY(0);}}
 #planner.preflight-console[data-stage="ready"] {inset:0;width:100%;height:100%;max-height:none;transform:none;border:0;border-radius:0;box-shadow:none;background:transparent;}
-#planner #ready-stage {position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px;background:linear-gradient(180deg,#d6e5ecca,#f5f6f3 92%);color:#15191b;border:0;border-radius:0;}
+#planner #ready-stage {position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:56px;background:#e8edeb;color:#15191b;border:0;border-radius:0;}
 #planner #ready-stage .ready-plane-icon {width:58px;height:58px;padding:12px;background:transparent;color:#1b252b;border:0;box-shadow:none;}
 #planner #ready-stage .ready-copy {color:#15191b;text-align:center;}
 #planner #ready-stage h1 {font-size:22px;font-weight:600;color:#15191b;}
@@ -310,16 +176,5 @@
 #planner #ready-stage .ready-copy p {color:#67747b;}
 #planner #ready-stage .ready-go {width:112px;min-width:112px!important;background:#161b1e;color:#fff;border-radius:28px!important;}
 #planner[data-motion="boarding"] #go-takeoff {visibility:hidden;}
-@media(prefers-reduced-motion:reduce) {#planner #checkin-ticket .boarding-stub-detachable {transition:none;}#planner[data-stage="checkin"] #airplane-stage {animation:none;}}
-#planner.preflight-console {backdrop-filter:none;}
-#planner[data-stage="checkin"]::before {content:none;}
-body:has(#planner[data-stage="checkin"]:not([hidden]))::after {content:"";position:fixed;inset:0;background:#0809099c;z-index:2;pointer-events:none;}
-#planner #checkin-ticket {background:transparent;border-color:transparent;}
-#planner #checkin-ticket .ticket-world-map {clip-path:inset(0 0 130px 0);}
-#planner #checkin-ticket .boarding-ticket-main {border:1px solid #ffffff16;}
-#planner #checkin-ticket.is-torn .boarding-stub-detachable {outline:none;box-shadow:none;}
-#planner #checkin-stage>.stage-heading {border:0;padding:0 18px 10px;}
-#planner #checkin-stage>.stage-heading h1 {font-size:16px;font-weight:500;}
-#planner #checkin-stage>.stage-heading .draft-route-label {display:none;}
-#planner #checkin-ticket-viewport {padding-bottom:64px;}
-#planner .boarding-pass .boarding-details strong {font-family:Consolas,"Cascadia Code",monospace;}
+@media(max-width:600px) {#planner .seat-columns,#planner .seat-row {grid-template-columns:1fr 1fr 46px 1fr 1fr;gap:8px;}#planner .seat-row button {height:58px;min-height:58px;}#planner #focus-picker {padding:20px;}#planner #focus-picker .task-options {grid-template-columns:repeat(2,minmax(0,1fr));}#focus-picker-label {font-size:18px;}#planner.preflight-console[data-stage="boarding"],#planner.preflight-console[data-stage="checkin"] {width:calc(100vw - 24px);top:16px;height:calc(100vh - 24px);}#planner #boarding-stage,#planner #checkin-stage {grid-template-rows:36px 20px minmax(0,1fr) 130px;}#planner #boarding-stage .ticket-viewport,#planner #checkin-stage .ticket-viewport {padding:8px;}#planner #boarding-ticket-viewport::after {left:8px;right:8px;}}
+@media(prefers-reduced-motion:reduce) {#planner #focus-picker,#planner #checkin-ticket .boarding-stub-detachable {transition:none;}#planner[data-stage="checkin"] #airplane-stage {animation:none;}#planner #focus-picker::backdrop {backdrop-filter:none;}}

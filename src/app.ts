@@ -70,7 +70,7 @@ export function start() {
           <div id="seat-route" class="draft-route-label"></div>
         </div>
         <div id="seat-content" class="seat-content">
-          <div class="seat-cabin" aria-label="客舱座位图">          <div class="cabin-nose" aria-hidden="true"><svg viewBox="0 0 480 330" preserveAspectRatio="none"><path class="fuselage" d="M1 330C1 195 135 1 240 1S479 195 479 330"/><path class="windshield" d="M100 145Q155 101 228 99V160Q143 164 74 206Z M252 99Q325 101 380 145L406 206Q337 164 252 160Z"/></svg></div><div class="seat-columns" aria-hidden="true"><span>A</span><span>C</span><i>过道</i><span>D</span><span>F</span></div><div id="seat-grid" class="seat-grid"></div>
+          <div class="seat-cabin" aria-label="客舱座位图">          <svg class="cabin-shell" viewBox="0 0 480 2400" preserveAspectRatio="none" aria-hidden="true"><path class="fuselage" id="cabin-shell-path"/></svg><div class="cabin-interior"><div class="cabin-nose" aria-hidden="true"><svg viewBox="0 0 480 330" preserveAspectRatio="none"><path class="fuselage" d="M1 330C1 195 135 1 240 1S479 195 479 330"/><path class="windshield" d="M100 145Q155 101 228 99V160Q143 164 74 206Z M252 99Q325 101 380 145L406 206Q337 164 252 160Z"/></svg></div><div class="seat-columns" aria-hidden="true"><span>A</span><span>C</span><i>过道</i><span>D</span><span>F</span></div><div id="seat-grid" class="seat-grid"></div><div class="cabin-tail" aria-hidden="true"></div></div>
           </div>
           <dialog id="focus-picker" class="focus-picker" aria-labelledby="focus-picker-label" aria-describedby="focus-seat-label" hidden>
             <button id="focus-picker-close" class="focus-picker-close" type="button" aria-label="关闭专注类型选择">×</button>
@@ -94,6 +94,7 @@ export function start() {
           <h1 id="boarding-stage-title">\u767b\u673a\u724c</h1>
           <div id="boarding-route-label" class="draft-route-label"></div>
         </div>
+        <div class="ticket-stage-spacer" aria-hidden="true"></div>
         <div id="boarding-ticket-viewport" class="ticket-viewport"><div id="boarding-ticket-frame" class="ticket-fit"><article id="boarding-ticket" class="boarding-pass" aria-label="\u767b\u673a\u724c">
           <div class="ticket-world-map" aria-hidden="true"></div>
           <div class="boarding-ticket-main"><span class="ticket-brand">HANGKE / FOCUS FLIGHT</span>
@@ -123,9 +124,7 @@ export function start() {
           <button id="checkin-stub" class="boarding-ticket-stub boarding-stub-detachable" type="button" aria-label="\u6cbf\u865a\u7ebf\u5411\u53f3\u6495\u5f00\u767b\u673a\u8054"><canvas id="checkin-barcode" class="boarding-barcode" aria-label="Code 128 barcode"></canvas><canvas id="checkin-qr" class="boarding-qr" width="84" height="84" aria-label="QR code for this local focus session"></canvas></button>
         </article></div></div>
               <div class="boarding-action checkin-actions"><button id="checkin-continue" class="primary" type="button" hidden>继续登机</button></div>
-      </section>
-
-      <section id="airplane-stage" class="preflight-stage airplane-stage" aria-labelledby="airplane-title" hidden>
+      <div class="checkin-footer"><section id="airplane-stage" class="preflight-stage airplane-stage" aria-labelledby="airplane-title" hidden>
         <div class="stage-heading compact-heading">
           <h1 id="airplane-title">\u98de\u884c\u6a21\u5f0f</h1>
           <div id="airplane-route" class="draft-route-label"></div>
@@ -135,6 +134,7 @@ export function start() {
           <div><strong>\u4fdd\u6301\u4e13\u6ce8</strong><p>Windows \u7248\u6682\u4e0d\u4f1a\u62e6\u622a\u5176\u4ed6\u5e94\u7528\uff0c\u98de\u884c\u4e0e\u8ba1\u65f6\u672c\u8eab\u4e0d\u53d7\u5f71\u54cd\u3002</p></div>
         </div>
         <div class="boarding-action"><button id="boarding-action" class="primary" type="button">开始登机</button></div>
+      </section></div>
       </section>
 
       <section id="ready-stage" class="preflight-stage ready-stage" aria-labelledby="ready-title" hidden>
@@ -157,7 +157,8 @@ export function start() {
         </div>
       </section>
     </form>
-    <section id="flight" hidden aria-label="飞行专注"><button id="flight-home" class="flight-home-button" type="button" aria-label="&#x8fd4;&#x56de;&#x4e3b;&#x9875;">&#x2302;</button><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button></div><div class="flight-pause-control"><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button></div></section>
+    <section id="flight" hidden aria-label="飞行专注"><button id="flight-home" class="flight-home-button" type="button" aria-label="&#x8fd4;&#x56de;&#x4e3b;&#x9875;">&#x2302;</button><div id="flight-route" class="route-label"></div><div class="flight-views"><button id="follow-plane" class="flight-view-button" type="button" aria-label="跟随飞机" data-tooltip="跟随飞机"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><circle cx="12" cy="12" r="1.4" fill="currentColor" stroke="none"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4"></path></svg></button><button id="route-view" class="flight-view-button" type="button" aria-label="查看完整航线" data-tooltip="查看完整航线"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="18" r="2"></circle><circle cx="19" cy="6" r="2"></circle><path d="M7 18c5.5 0 2.5-12 10-12M9 7h4M11 5v4"></path></svg></button></div><div class="flight-pause-control"><button id="pause-flight" class="flight-view-button pause-flight" type="button" aria-label="暂停飞行" data-tooltip="暂停飞行" aria-pressed="false"><svg class="pause-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7v10M15 7v10"></path></svg><svg class="resume-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 7 8 5-8 5Z"></path></svg></button></div><div class="focus"><div id="timer" role="timer"></div><div id="remaining-distance"></div><p id="flight-task"></p><button id="flight-more" class="quiet" type="button" hidden aria-label="暂停选项">···</button></div></section>
+    <dialog id="pause-options" class="journey-dialog"><h2>飞行已暂停</h2><p>准备好后，继续这段旅程。</p><button id="resume-journey" class="primary" type="button">继续飞行</button><button id="cancel" class="quiet hold-end" type="button"><span>按住结束</span></button><button id="focus-settings" class="quiet pause-setting" type="button">✈ 飞行模式<span>Windows 勿扰设置 ↗</span></button><button id="keep-awake" class="quiet pause-setting" type="button" aria-pressed="false">☀ 保持屏幕常亮<span id="awake-status">关闭</span></button><p id="pause-setting-message" role="status"></p><button id="close-pause-options" class="quiet" type="button">返回</button></dialog><dialog id="journey-ended" class="journey-dialog"><p class="journey-stamp">JOURNEY ENDED</p><h2>旅程已结束</h2><p>已回到出发机场，下一次再出发。</p><button id="ended-home" class="primary" type="button">返回首页</button></dialog>
     <section id="landing" class="result" hidden aria-label="航程完成"><p id="landing-route"></p><h1>航程完成</h1><p id="landing-metrics"></p><p id="landing-task"></p><button id="done" class="primary">完成</button></section>
     <aside id="history" hidden aria-label="&#x6211;&#x7684;&#x822a;&#x8ff9;"><div class="home-detail-heading"><button id="history-back" class="back-action" type="button" aria-label="&#x8fd4;&#x56de;&#x4e3b;&#x9875;">&#x2190;</button><h1>&#x6211;&#x7684;</h1></div><div class="history-passport"><span>HANGKE / FLIGHT PROFILE</span><h2>我的飞行档案</h2><p id="history-profile"></p><div id="history-totals" class="home-metrics"></div></div><h2 class="history-log-label">FLIGHT LOG <span>已完成航程</span></h2><div id="history-list"></div><div id="details" hidden></div></aside>`;
   const el = <T extends HTMLElement = HTMLElement>(id: string) =>
@@ -205,6 +206,7 @@ export function start() {
     button.setAttribute("aria-pressed", String(paused));
     button.setAttribute("aria-label", label);
     button.dataset.tooltip = label;
+    show("flight-more", paused);
   };
   let map: FlightMap | undefined;
   try {
@@ -681,6 +683,17 @@ export function start() {
     seatGrid.append(seatRow);
   }
 
+  const cabin = el<HTMLElement>("seat-content").querySelector<HTMLElement>(".seat-cabin")!;
+  const shell = document.getElementById("cabin-shell-path") as unknown as SVGPathElement;
+  const updateCabinShell = () => {
+    const height = cabin.offsetHeight;
+    if (!height) return;
+    const tail = Math.max(330, height - 150);
+    cabin.querySelector<SVGSVGElement>(".cabin-shell")!.setAttribute("viewBox", `0 0 480 ${height}`);
+    shell.setAttribute("d", `M240 1 C135 1 1 195 1 330 L1 ${tail} Q1 ${height-12} 240 ${height-1} Q479 ${height-12} 479 ${tail} L479 330 C479 195 345 1 240 1 Z`);
+  };
+  new ResizeObserver(updateCabinShell).observe(cabin);
+  updateCabinShell();
   const focusPicker = el<HTMLDialogElement>("focus-picker");
   let focusReturn: HTMLButtonElement | undefined;
   const closeFocusPicker = (restoreFocus = true) => {
@@ -728,26 +741,33 @@ export function start() {
   const ticketLayouts = ["boarding", "checkin"].map((name) => ({
     viewport: el<HTMLElement>(`${name}-ticket-viewport`),
     frame: el<HTMLElement>(`${name}-ticket-frame`),
-    ticket: el<HTMLElement>(name === "boarding" ? "boarding-ticket" : "checkin-ticket"),
+    ticket: el<HTMLElement>(`${name}-ticket`),
   }));
+  const paperWidth = 560;
+  const paperTailSpace = 150;
   let ticketFitFrame: number | null = null;
+  let lastPaperMetrics = "";
   const fitTickets = () => {
-    for (const { viewport, frame, ticket } of ticketLayouts) {
-      const inset = getComputedStyle(viewport);
-      const availableWidth = viewport.clientWidth - parseFloat(inset.paddingLeft) - parseFloat(inset.paddingRight);
-      const availableHeight = viewport.clientHeight - parseFloat(inset.paddingTop) - parseFloat(inset.paddingBottom);
-      if (availableWidth <= 0 || availableHeight <= 0) continue;
-      const naturalWidth = Math.max(560, Math.min(820, availableWidth - 4));
-      frame.style.width = `${naturalWidth}px`;
-      const naturalHeight = ticket.offsetHeight;
-      if (!naturalHeight) continue;
-      const lowerAllowance = ticket.id === "checkin-ticket" ? 190 : 0;
-      frame.style.height = `${naturalHeight + lowerAllowance}px`;
-      const scale = Math.min(1,
-        (availableWidth - 4) / (naturalWidth + 64),
-        (availableHeight - 4) / (naturalHeight + lowerAllowance + 4));
-      frame.style.setProperty("--ticket-scale", String(Math.max(0.1, scale)));
+    const visible = ticketLayouts.find(({ viewport }) => viewport.clientWidth > 0 && viewport.clientHeight > 0);
+    if (!visible) return;
+    const inset = getComputedStyle(visible.viewport);
+    const availableWidth = visible.viewport.clientWidth - parseFloat(inset.paddingLeft) - parseFloat(inset.paddingRight);
+    const availableHeight = visible.viewport.clientHeight - parseFloat(inset.paddingTop) - parseFloat(inset.paddingBottom);
+    const naturalHeight = Math.max(...ticketLayouts.map(({ ticket }) => ticket.offsetHeight));
+    if (availableWidth <= 0 || availableHeight <= 0 || naturalHeight <= 0) return;
+    const metrics=`${availableWidth.toFixed(2)}:${availableHeight.toFixed(2)}:${naturalHeight}`;
+    if (metrics === lastPaperMetrics) return;
+    lastPaperMetrics=metrics;
+    const scale = Math.max(0.1, Math.min(1, availableWidth / paperWidth, availableHeight / (naturalHeight + paperTailSpace)));
+    el("boarding-stage").style.setProperty("--outlet-edge", `${10 + paperTailSpace * scale}px`);
+    el("boarding-stage").style.setProperty("--outlet-width", `${paperWidth * scale}px`);
+    for (const { viewport, frame } of ticketLayouts) {
+      frame.style.setProperty("--ticket-scale", String(scale));
+      frame.style.setProperty("--ticket-layout-width", `${paperWidth * scale}px`);
+      frame.style.setProperty("--ticket-layout-height", `${(naturalHeight + paperTailSpace) * scale}px`);
+      viewport.style.setProperty("--paper-edge", `${parseFloat(getComputedStyle(viewport).paddingBottom) + paperTailSpace * scale}px`);
     }
+
   };
   const scheduleTicketFit = () => {
     if (ticketFitFrame !== null) return;
@@ -761,7 +781,6 @@ export function start() {
     ticketResizeObserver.observe(viewport);
     ticketResizeObserver.observe(ticket);
   }
-
   let presentation: Animation | undefined;
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const cancelPresentation = () => {
@@ -798,13 +817,20 @@ export function start() {
     else if (stage === "ready") preflightStage = "checkin";
     renderPreflight();
   });
+  // The visible page, not the last preflight draft, owns background visibility.
+  const syncScene = () => {
+    document.body.dataset.hangkeScene = el("planner").hidden
+      ? (state.activeFlight ? "flying" : landed ? "landing" : "history")
+      : preflightStage;
+  };
   const renderPreflight = () => {
     el("planner").dataset.stage = preflightStage;
+    syncScene();
     show("home-stage", preflightStage === "home");
     show("flight-stage", preflightStage === "flight");
     show("seat-stage", preflightStage === "seat");
     show("boarding-stage", preflightStage === "boarding");
-    show("checkin-stage", preflightStage === "checkin");
+    show("checkin-stage", preflightStage === "checkin" || preflightStage === "airplane");
     show("airplane-stage", preflightStage === "airplane" || (preflightStage === "checkin" && checkinCompleted));
     el("planner").dataset.checkedIn = String(checkinCompleted);
     show("ready-stage", preflightStage === "ready");
@@ -858,7 +884,8 @@ export function start() {
         validDuration() ? focusDistanceKm(durationMinutes) : 0,
       );
     else if (preflightStage === "seat") map?.select();
-    else map?.select(origin, destination);
+    else map?.select(); // Independent paper/ready pages do not frame an invisible map.
+
   };
 
   let durationRefreshTimer: number | undefined;
@@ -1014,6 +1041,11 @@ export function start() {
     const moved = durationDrag.moved;
     if (performance.now() - durationDrag.lastTime > 80) durationVelocity = 0;
     durationDrag = undefined;
+    // A released edge stretch returns to that edge; it must not coast into another duration.
+    if (durationPosition < 0 || durationPosition > maxDurationPosition()) {
+      durationMotionTarget = Math.min(maxDurationPosition(), Math.max(0, durationPosition));
+      durationVelocity = 0;
+    }
     durationRuler.classList.remove("dragging");
     if (moved) {
       suppressDurationClick = true;
@@ -1134,9 +1166,11 @@ export function start() {
   el<HTMLButtonElement>("confirm-seat").onclick = async () => {
     if (presentation || preflightStage !== "seat" || !origin || !destination || !selectedSeat || !selectedTask) return;
     closeFocusPicker(false);
-    const cabin = el("seat-content").querySelector<HTMLElement>(".seat-cabin")!;
-    el("seat-content").inert = true;
-    const travel = cabin.getBoundingClientRect().bottom - el("seat-content").getBoundingClientRect().top + 24;
+    const cabinViewport = el<HTMLElement>("seat-content");
+    cabinViewport.inert = true;
+    cabinViewport.scrollTop = 0;
+    updateCabinShell();
+    const travel = cabin.offsetHeight + 24;
     if (!await animatePresentation(cabin, [{ transform: "translateY(0)" }, { transform: `translateY(-${travel}px)` }], 1050, "cubic-bezier(.55,.05,.85,.55)", "cabin-exit")) return;
     el("seat-content").inert = false;
     preflightStage = "boarding";
@@ -1147,7 +1181,7 @@ export function start() {
     fitTickets();
     const next = el<HTMLButtonElement>("next-step");
     next.disabled = true;
-    if (!await animatePresentation(el("boarding-ticket"), [{ transform: "translateY(calc(100% + 12px))" }, { transform: "translateY(0)" }], 3000, "linear", "printing")) return;
+    if (!await animatePresentation(el("boarding-ticket"), [{ transform: "scale(var(--ticket-scale)) translateY(calc(100% + 12px))" }, { transform: "scale(var(--ticket-scale)) translateY(0)" }], 3000, "linear", "printing")) return;
     next.disabled = false;
     next.focus({ preventScroll: true });
   };
@@ -1168,9 +1202,10 @@ export function start() {
     const seam = el<HTMLElement>("checkin-tear-handle").parentElement!;
     const travel = Math.max(0, seam.clientWidth - 40);
     checkinTicket.style.setProperty("--tear-x", `${checkinProgress * travel}px`);
-    checkinTicket.style.setProperty("--tear-drop", `${checkinProgress * 18}px`);
-    checkinTicket.style.setProperty("--tear-angle", `${checkinProgress * -1.8}deg`);
-    checkinTicket.style.setProperty("--tear-cut", `${checkinProgress * 100}%`);
+    checkinTicket.style.setProperty("--tear-drop", `${checkinProgress * 12}px`);
+    checkinTicket.style.setProperty("--tear-angle", `${checkinProgress * -4}deg`);
+    checkinTicket.style.setProperty("--tear-fold", `${checkinProgress * 8}deg`);
+    checkinTicket.style.setProperty("--tear-cut", `${checkinProgress * travel}px`);
     checkinStub.setAttribute("aria-valuenow", String(Math.round(checkinProgress * 100)));
   };
   function resetCheckin() {
@@ -1311,6 +1346,7 @@ export function start() {
     show("flight", !!state.activeFlight && !homeOverlay);
     show("landing", !!landed);
     show("history", historyMode);
+    syncScene();
     map?.setHistory(state.flights);
     if (state.activeFlight) {
       const f = state.activeFlight;
@@ -1350,6 +1386,7 @@ export function start() {
     if (clock >= f.endsAt) {
       const next = finalize(state, now);
       if (next !== state && commit(next)) {
+        if (keepAwake) void updateKeepAwake(false);
         landed = next.flights.find((x) => x.id === f.id);
         origin = airport(next.lastAirportIata);
         destination = undefined;
@@ -1394,20 +1431,69 @@ export function start() {
     endHoldTimer = undefined;
     endButton.classList.remove("holding");
   };
+  const returnJourneyHome = () => {
+    if (keepAwake) void updateKeepAwake(false);
+    landed = undefined;
+    homeOverlay = false;
+    historyMode = false;
+    homeUI?.setPage("home");
+    preflightStage = "home";
+    selectedSeat = "";
+    selectedTask = "";
+    destination = undefined;
+    origin = airport(state.lastAirportIata);
+    setOriginInput(origin);
+    refreshDestinations();
+    render();
+    if (origin) map?.locate(origin);
+    el("start-preflight").focus();
+  };
+  const nativeInvoke = <T>(command: string, args?: Record<string, unknown>): Promise<T> => {
+    const native = (window as unknown as { __TAURI__?: { core: { invoke: <R>(c: string, a?: Record<string, unknown>) => Promise<R> } } }).__TAURI__;
+    return native ? native.core.invoke<T>(command, args) : Promise.reject(new Error("请使用 Windows 候选程序"));
+  };
+  let keepAwake = false;
+  const awakeButton = el<HTMLButtonElement>("keep-awake");
+  const updateKeepAwake = async (enabled: boolean) => {
+    awakeButton.disabled = true;
+    try {
+      keepAwake = await nativeInvoke<boolean>("set_keep_awake", { enabled });
+      awakeButton.setAttribute("aria-pressed", String(keepAwake));
+      el("awake-status").textContent = keepAwake ? "本次旅程开启" : "关闭";
+      el("pause-setting-message").textContent = "";
+    } catch (error) { el("pause-setting-message").textContent = String(error); }
+    finally { awakeButton.disabled = false; }
+  };
+  if ("__TAURI__" in window) void updateKeepAwake(false);
+  awakeButton.onclick = () => { if (state.activeFlight) void updateKeepAwake(!keepAwake); };
+  el("focus-settings").onclick = async () => {
+    try {
+      await nativeInvoke("open_focus_settings");
+      el("pause-setting-message").textContent = "请在系统中开启勿扰；优先通知与闹钟仍由 Windows 管理。";
+    } catch (error) { el("pause-setting-message").textContent = String(error); }
+  };
+  const pauseOptions = el<HTMLDialogElement>("pause-options");
+  el("flight-more").onclick = () => {
+    if (state.activeFlight?.pausedAt != null) pauseOptions.showModal();
+  };
+  const closePauseOptions = () => { clearEndHold(); pauseOptions.close(); };
+  pauseOptions.addEventListener("cancel", clearEndHold);
+  el("close-pause-options").onclick = closePauseOptions;
+  el("resume-journey").onclick = () => {
+    closePauseOptions();
+    if (state.activeFlight?.pausedAt != null) el("pause-flight").click();
+  };
+  const endedDialog = el<HTMLDialogElement>("journey-ended");
+  el("ended-home").onclick = () => { endedDialog.close(); el("start-preflight").focus(); };
   const finishHeldEnd = () => {
     clearEndHold();
     tick();
     if (!state.activeFlight) return;
     if (commit(cancel(state))) {
       stopPlaneAnimation();
-      homeOverlay = false;
-      homeUI?.setPage("home");
-      preflightStage = "home";
-      selectedSeat = "";
-      selectedTask = "";
-      render();
-      refreshDestinations();
-      el("start-preflight").focus();
+      closePauseOptions();
+      returnJourneyHome();
+      endedDialog.showModal();
     }
   };
   const beginEndHold = () => {
@@ -1434,18 +1520,7 @@ export function start() {
     if (e.key === " " || e.key === "Enter") clearEndHold();
   };
   endButton.onclick = (e) => e.preventDefault();
-  el("done").onclick = () => {
-    landed = undefined;
-    homeOverlay = false;
-    homeUI?.setPage("home");
-    preflightStage = "home";
-    selectedSeat = "";
-    selectedTask = "";
-    destination = undefined;
-    refreshDestinations();
-    render();
-    el("start-preflight").focus();
-  };
+  el("done").onclick = returnJourneyHome;
   const toggleHistory = () => {
     if (homeUI?.getPage() === "roam") homeUI.setPage("world");
     historyMode = !historyMode;

@@ -205,8 +205,6 @@
 }
 @media(prefers-reduced-motion:reduce){#home-radar .home-radar-ring{animation:none;opacity:.25;transform:scale(1.8)}.home-shortcut{transition:none}}
 
-#planner[data-stage="home"] .origin-sheet {position:fixed;left:50%;top:auto;bottom:32px;z-index:30;width:min(520px,calc(100vw - 32px));max-height:calc(100vh - 64px);transform:translateX(-50%);overflow-y:auto;pointer-events:auto;}
-#planner[data-stage="home"] .origin-sheet .results {max-height:min(260px,40vh);}
 
 .home-shortcuts.has-active {grid-template-columns:1.65fr 1fr 1.2fr 1fr;}
 .home-shortcuts:not(.has-active) [data-home-page="mine"] {padding-left:0;}
